@@ -40,7 +40,7 @@ module register_file_tb;
   register_file DUT(CLK, nRST, rfif.rf);
 `else
   register_file DUT(
-    .\rfif.rdat2 (rfif.dat2),
+    .\rfif.rdat2 (rfif.rdat2),
     .\rfif.rdat1 (rfif.rdat1),
     .\rfif.wdat (rfif.wdat),
     .\rfif.rsel2 (rfif.rsel2),
@@ -52,80 +52,6 @@ module register_file_tb;
   );
 `endif
 
-  /*task reset_dut;
-  begin
-    nRST = 0;
-    @(posedge CLK);
-    @(posedge CLK);
-    @(negedge CLK);
-    nRST = 1;
-    @(posedge CLK);
-  end
-  endtask
-
-  task write_reg;
-  input int num;
-  input int data;
-  begin
-    @(negedge CLK);
-    rfif.WEN = 1'b1;
-    rfif.wsel = num;
-    rfif.wdat = data;
-    @(negedge CLK);
-    rfif.WEN = 1'b0;
-  end
-  endtask
-
-  task read1_reg;
-  input int num;
-  input int exp_rdat;
-  begin
-    @(negedge CLK);
-    rfif.rsel1 = num;
-    @(negedge CLK);
-    assert (rfif.rdat1 == exp_rdat) 
-      $info("Register %0d is as expected read by rdat1", num);
-    else
-      $error("Register %0d is not as expected read by rdat1", num);
-  end
-  endtask
-
-  task read2_reg;
-  input int num;
-  input int exp_rdat;
-  begin
-    @(negedge CLK);
-    rfif.rsel2 = num;
-    @(negedge CLK);
-    assert (rfif.rdat2 == exp_rdat)
-      $info("Register %0d is as expected read by rdat1", num);
-    else
-      $error("Register %0d is not as expected read by rdat2", num);
-  end
-  endtask*/
-
-  /*initial begin
-    //Test case 1: Reset the DUT
-    tb_test_num = 1;
-    reset_dut();
-    for(i = 0; i < 32; i++) begin
-      read1_reg(i, 0);
-      read2_reg(i, 0);
-    end
-    //Test case 2: Write and Read Register 0
-    tb_test_num ++;
-    write_reg(0, 500);
-    read1_reg(0,0);
-    read2_reg(0,0);
-    //Test case 3: Write and read other register
-    tb_test_num++;
-    for(i = 0; i < 32; i++) begin
-      write_reg(i, i);
-      read1_reg(i, i);
-      read2_reg(i, i);
-    end
-    $stop();
-  end*/
 endmodule
 
 program test(
@@ -163,45 +89,60 @@ endtask
 
 task read1_reg;
   input int num;
-  input int exp_rdat;
+  input [31:0] exp_rdat;
   begin
     @(negedge clk);
     rfif.rsel1 = num;
     @(negedge clk);
-    assert (rfif.rdat1 == exp_rdat) 
-      $info("Register %0d is as expected read by rdat1", num);
+    assert(rfif.rdat1 == exp_rdat) 
+      $display("Register %0d is as expected read by rdat1", num);
     else
-      $error("Register %0d is not as expected read by rdat1", num);
+      $display("Register %0d is not as expected read by rdat1", num);
   end
 endtask
 
 task read2_reg;
   input int num;
-  input int exp_rdat;
+  input [31:0] exp_rdat;
   begin
     @(negedge clk);
     rfif.rsel2 = num;
     @(negedge clk);
     assert (rfif.rdat2 == exp_rdat)
-      $info("Register %0d is as expected read by rdat1", num);
+      $display("Register %0d is as expected read by rdat2", num);
     else
-      $error("Register %0d is not as expected read by rdat2", num);
+      $display("Register %0d is not as expected read by rdat2", num);
   end
 endtask
 
 initial begin
 //Test case 1: Reset the DUT
   tb_test_num = 1;
+  rfif.WEN = 1'b0;
   reset_dut();
   for(i = 0; i < 32; i++) begin
     read1_reg(i, 0);
     read2_reg(i, 0);
   end
+  //Test case 2: Write with WEN = 1'b0
+  tb_test_num ++;
+  @(negedge clk);
+  rfif.WEN = 1'b0;
+  rfif.wdat = 32'd456;
+  rfif.wsel = 5'd3;
+  @(negedge clk);
+  read1_reg(3, 0);
+  read2_reg(3, 0);
   //Test case 2: Write and Read Register 0
   tb_test_num ++;
   write_reg(0, 500);
   read1_reg(0,0);
   read2_reg(0,0);
+  //Test case 3: Write and read specific register
+  tb_test_num ++;
+  write_reg(10,989);
+  read1_reg(10,989);
+  read2_reg(10,989);
   //Test case 3: Write and read other register
   tb_test_num++;
   for(i = 0; i < 32; i++) begin

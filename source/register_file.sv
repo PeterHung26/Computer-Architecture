@@ -11,7 +11,7 @@ logic [31:0][31:0] nxt_regfile;
 
 genvar i;
 generate
-    for(i = 0; i < 32; i++) begin
+    for(i = 0; i < 32; i++) begin : FORLOOP
         always_ff @( posedge clk, negedge n_rst ) begin : REGISTER_FILE
             if(!n_rst) begin
                 regfile[i] <= '0;
@@ -45,6 +45,7 @@ end
 
 int l;
 always_comb begin : NXT_REGFILE
+    l = 0;
     nxt_regfile = regfile;
     if(rfif.WEN) begin
         for(l = 0; l < 32; l++) begin
