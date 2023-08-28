@@ -1,19 +1,19 @@
 //interface
 `include "alu_if.vh"
-
+`include "cpu_types_pkg.vh"
 module alu_fpga (
     input logic CLOCK_50,
     input logic [3:0] KEY,
     input logic [17:0] SW,
-    output logic [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7
+    output logic [6:0] HEX0, HEX1, HEX2, HEX3, HEX4, HEX5, HEX6, HEX7,
     output logic [3:0] LEDG,
     output logic [2:0] LEDR
 );
-
+    import cpu_types_pkg::*;
     //interface
-    alu_if aluif;
+    alu_if aluif();
     //alu
-    alu ALU(CLOCK_50, aluif)
+    alu ALU(CLOCK_50, aluif);
 
     logic [31:0] regb;
     always_ff @(posedge CLOCK_50) begin : PORTB
@@ -28,7 +28,7 @@ module alu_fpga (
     assign aluif.portb = regb;
     assign aluif.porta[15:0] = SW[15:0];
     assign aluif.porta[31:16] = SW[16]?16'hffff:16'h0000; // 2's complement
-    assign aluif.aluop = ~KEY[3:0];
+    assign aluif.aluop = aluop_t'(~KEY);
     assign aluif.negative = LEDR[2];
     assign aluif.overflow = LEDR[1];
     assign aluif.zero = LEDR[0];

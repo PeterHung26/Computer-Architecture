@@ -16,7 +16,7 @@ module register_file_fpga (
 );
 
   // interface
-  register_file_if rfif;
+  register_file_if rfif();
   // rf
   register_file RF(CLOCK_50, KEY[2], rfif);
 
