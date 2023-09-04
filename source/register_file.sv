@@ -25,6 +25,7 @@ endgenerate
 
 int j;
 always_comb begin : READ1
+    j = 0;
     rfif.rdat1 = '0;
     for(j = 0; j < 32; j++) begin
         if(rfif.rsel1 == j) begin
@@ -35,6 +36,7 @@ end
 
 int k;
 always_comb begin : READ2
+    k = 0;
     rfif.rdat2 = '0;
     for(k = 0; k < 32; k++) begin
         if(rfif.rsel2 == k) begin
