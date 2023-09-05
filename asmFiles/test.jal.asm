@@ -1,14 +1,20 @@
   #------------------------------------------------------------------
-  # JUMP Test Program
+  # JAL Test Program
   #------------------------------------------------------------------
 
   org 0x0000
   ori   $1,$zero,0xD269
   ori   $2,$zero,0x37F1
-  ori   $3,$zero,0x5656
-  ori   $4,$zero,0x2222
-  ori   $5,$zero,0x7955
-  sw    $3, 0($1)
-  sw    $5, 0($2)
+  jal     UNIT
+  ori   $4,$zero,0xdead
+  sw    $4, 0($1)
   halt
+
+
+  UNIT:
+  ori   $4,$zero,0xcool
   sw    $4, 4($1)
+  jr    $31
+  ori   $4,$zero,0xpete
+  sw    $4, 8($1)
+

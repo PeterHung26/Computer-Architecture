@@ -6,14 +6,18 @@
   ori   $1,$zero,0xD269
   ori   $2,$zero,0x37F1
   j     UNIT
+  ori   $4,$zero,0xdead
+  sw    $4, 0($1)
 
 
   UNIT:
-  ori   $3,$zero,0x8787
-  jal   UNIT2
-  ori   $5,$zero,0x5555
-  halt
+  ori   $4,$zero,0xadcc
+  sw    $4, 4($1)
+  j     UNIT2
+  ori   $4,$zero,0xacdc
+  sw    $4, 8($1)
 
   UNIT2:
-  ori   $4,$zero,0x7878
-  jr    $31
+  ori   $4,$zero,0xbadd
+  sw    $4, 12($1)
+  halt
