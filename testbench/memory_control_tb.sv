@@ -212,7 +212,7 @@ program test(
             @(posedge CLK);
             @(posedge CLK);
             @(negedge CLK);
-            $display("Address: %d, Instruction: %0h", i, cif0.iload);
+            $display("Address: %d, Instruction: %0h", i << 2, cif0.iload);
             $display("Address: %d, Data: %0h", (i+30) << 2, cif0.dload);
         end
         cif0.dREN = 0;
