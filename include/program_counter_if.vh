@@ -15,7 +15,7 @@ interface program_counter_if;
     logic ihit;
 
     // branch offset and jump location
-    logic [IMM_W-1:0]   bimm; //Branch
+    word_t   bimm; //Branch
     logic [ADDR_W-1:0]  jimm;
     word_t jraddr;
 

@@ -16,7 +16,7 @@ always_comb begin : CONTROL
     cuif.JR = 1'b0;
     cuif.RegDst = 2'b0;
     cuif.RegWr = 1'b0;
-    cuif.ALUCtr = 4'b0;
+    cuif.ALUCtr = ALU_SLL;
     cuif.JumpReg = 1'b0;
     cuif.LUI = 1'b0;
     cuif.LDsel = 2'b0;
@@ -228,7 +228,7 @@ always_comb begin : CONTROL
     end
     HALT: begin
         cuif.iread = 1'b0;
-        cuif.halt = 1'b0;
+        cuif.halt = 1'b1;
     end 
     endcase
 end
