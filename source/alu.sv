@@ -15,11 +15,11 @@ always_comb begin : ALU
     aluif.portout = '0;
     casez (aluif.aluop)
     ALU_SLL: begin
-        aluif.portout = aluif.porta << aluif.portb;
+        aluif.portout = aluif.portb << aluif.porta[4:0];
         aluif.overflow = 1'b0;
     end
     ALU_SRL: begin
-        aluif.portout = aluif.porta >> aluif.portb;
+        aluif.portout = aluif.portb >> aluif.porta[4:0];
         aluif.overflow = 1'b0;
     end
     ALU_ADD: begin

@@ -25,5 +25,10 @@ interface request_unit_if;
         input dhit, ihit, dread, dwrite, iread,
         output datomic, dmemWEN, dmemREN, imemREN
     );
+
+    modport tb(
+        input datomic, dmemWEN, dmemREN, imemREN,
+        output dhit, ihit, dread, dwrite, iread
+    );
 endinterface
 `endif

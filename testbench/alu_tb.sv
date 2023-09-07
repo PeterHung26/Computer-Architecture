@@ -96,10 +96,10 @@ program test(
     tb_test_num = 0;
     //Test case 1: SLL and SRL
     tb_test_num ++;
-    setup(ALU_SLL, 32'hffffffff, 32'd8);
+    setup(ALU_SLL, 32'd8, 32'hffffffff);
     check_portout(32'hffffff00, "SLL");
     check_flag(1,0,0);
-    setup(ALU_SRL, 32'hffffffff, 32'd8);
+    setup(ALU_SRL, 32'd8, 32'hffffffff);
     check_portout(32'h00ffffff, "SRL");
     check_flag(0,0,0);
 

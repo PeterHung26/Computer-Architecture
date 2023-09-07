@@ -15,9 +15,13 @@ interface control_unit_if;
     logic Branch;
     logic Jump;
     logic JR;
-    logic RegDst;
+    logic [1:0] RegDst;
     logic RegWr;
     aluop_t ALUCtr;
+    logic JumpReg;
+    logic LUI;
+    logic [1:0] LDsel;
+    logic [1:0] SVsel;
 
     //datas from portout to decide whether to branch
     word_t Equal;
@@ -32,13 +36,27 @@ interface control_unit_if;
     //halt and flushed
     logic halt;
     logic flushed;
+    //Flag from ALU
+    logic zero;
+    logic negative;
+    logic overflow;
 
     modport cu(
-        input Equal, opcode, funct, shamt, flushed,
-        output ExtOp, ALUSrc, MemtoReg, Branch, Jump, JR, RegDst, RegWr, ALUCtr,
+        input Equal, opcode, funct, shamt, flushed, zero, negative, overflow, 
+        output ExtOp, ALUSrc, MemtoReg, Branch, Jump, JR, RegDst, RegWr, ALUCtr, JumpReg, LUI, LDsel, SVsel, 
         // Control signal
-        iread, dread, dwrite
+        iread, dread, dwrite,
         // Signal to request unit
+        halt
+    );
+
+    modport tb(
+        input ExtOp, ALUSrc, MemtoReg, Branch, Jump, JR, RegDst, RegWr, ALUCtr, JumpReg, LUI, LDsel, SVsel, 
+        // Control signal
+        iread, dread, dwrite,
+        // Signal to request unit
+        halt,
+        output Equal, opcode, funct, shamt, flushed, zero, negative, overflow
     );
 endinterface
 `endif
