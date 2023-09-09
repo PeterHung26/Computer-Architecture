@@ -25,12 +25,13 @@ always_ff @(posedge CLK, negedge nRST) begin : PROGRAM_COUNTER
 end
 
 always_comb begin : NXT_PCADDR
+    pcif.nxt_pc = pcif.pcaddr + 4;
     if(pcif.Branch)
         temp1 = pcif.pcaddr + (pcif.bimm << 2);
     else
-        temp1 = pcif.pcaddr + 4;
+        temp1 = pcif.nxt_pc;
     if(pcif.Jump)
-        temp2 = {4'b0, pcif.jimm, 2'b0};
+        temp2 = {pcif.pcaddr[31:28], pcif.jimm, 2'b0}; // check
     else
         temp2 = temp1;
     if(pcif.JR)

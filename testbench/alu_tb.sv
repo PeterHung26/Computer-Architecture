@@ -19,7 +19,7 @@ module alu_tb;
   );
   //DUT
   `ifndef MAPPED
-    alu ALU(CLK, aluif.alu);
+    alu ALU(CLK, aluif);
   `else
     alu ALU(
         .\aluif.porta (aluif.porta),

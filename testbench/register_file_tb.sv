@@ -37,7 +37,7 @@ module register_file_tb;
   );
   // DUT
 `ifndef MAPPED
-  register_file DUT(CLK, nRST, rfif.rf);
+  register_file DUT(CLK, nRST, rfif);
 `else
   register_file DUT(
     .\rfif.rdat2 (rfif.rdat2),

@@ -20,15 +20,16 @@ interface program_counter_if;
     word_t jraddr;
 
     // pc
+    word_t nxt_pc;
     word_t pcaddr;
 
     modport pc(
         input Branch, Jump, JR, ihit, bimm, jimm, jraddr,
-        output pcaddr
+        output nxt_pc, pcaddr
     );
 
     modport tb(
-        input pcaddr,
+        input nxt_pc, pcaddr,
         output Branch, Jump, JR, ihit, bimm, jimm, jraddr
     );
 endinterface

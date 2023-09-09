@@ -3,7 +3,7 @@
 
 module alu(
     input logic clk,
-    alu_if aluif
+    alu_if.alu aluif
 );
 
 import cpu_types_pkg::*;

@@ -2,7 +2,7 @@
 `include "cpu_types_pkg.vh"
 
 module request_unit(
-    input CLK,
+    input logic CLK,
     request_unit_if.ru ruif
 );
 

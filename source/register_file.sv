@@ -3,7 +3,7 @@
 module register_file(
     input logic clk,
     input logic n_rst,
-    register_file_if rfif
+    register_file_if.rf rfif
 );
 
 logic [31:0][31:0] regfile;

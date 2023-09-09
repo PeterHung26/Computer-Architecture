@@ -2,7 +2,7 @@
 `include "cpu_types_pkg.vh"
 
 module control_unit(
-    input CLK,
+    input logic CLK,
     control_unit_if.cu cuif
 );
 
