@@ -91,4 +91,8 @@ module datapath (
     else
       rfif.wdat = dout1;
   end
+
+  //Extender
+  assign exif.ExtOp = cuif.ExtOp;
+  assign exif.imm = dpif.imemload[15:0];
 endmodule
