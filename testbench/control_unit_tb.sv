@@ -7,6 +7,7 @@ module control_unit_tb;
 
     parameter PERIOD = 10;
     logic CLK = 0;
+    logic nRST = 0;
     // clock
     always #(PERIOD/2) CLK++;
 
@@ -15,11 +16,12 @@ module control_unit_tb;
     // test program
     test #(.PERIOD (PERIOD)) PROG (
         .clk(CLK),
+        .nRST(nRST),
         .cuif(cuif)
     );
     //DUT
     `ifndef MAPPED
-        control_unit CU(CLK, cuif);
+        control_unit CU(CLK, nRST, cuif);
     `else
         control_unti CU(
             .\cuif.Equal (cuif.Equal),
@@ -47,6 +49,7 @@ module control_unit_tb;
             .\cuif.dread (cuif.dread),
             .\cuif.dwrite (cuif.dwrite),
             .\cuif.halt (cuif.halt),
+            .\nRST(nRST),
             .\CLK (CLK)
         );
     `endif
@@ -55,12 +58,26 @@ endmodule
 
 program test(
   input logic clk,
+  output logic nRST, 
   control_unit_if cuif
 );
     import cpu_types_pkg::*;
     parameter PERIOD = 10;
     int tb_test_num;
     string tb_test_case;
+
+    task reset();
+    begin
+        tb_test_case = "RESET";
+        tb_test_num++;
+        nRST = 0;
+        @(posedge clk);
+        @(posedge clk);
+        @(posedge clk);
+        @(negedge clk);
+        nRST = 1;
+    end
+    endtask
 
     task r_type;
     input string rcase;
@@ -102,6 +119,7 @@ program test(
         tb_test_num = 0;
         tb_test_case = "Start testing";
         #PERIOD;
+        reset();
         //R Type
         // SLLV
         r_type("R_Type: SLLV", SLLV);

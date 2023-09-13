@@ -3,7 +3,7 @@
   #------------------------------------------------------------------
 
   org 0x0000
-  ori   $1,$zero,0xD269
+  ori   $1,$zero,0x0064
   ori   $2,$zero,0x37F1
   jal     UNIT
   ori   $4,$zero,0xdead
@@ -12,9 +12,9 @@
 
 
   UNIT:
-  ori   $4,$zero,0xcool
+  ori   $4,$zero,0xbadd
   sw    $4, 4($1)
   jr    $31
-  ori   $4,$zero,0xpete
+  ori   $4,$zero,0xbcbc
   sw    $4, 8($1)
 

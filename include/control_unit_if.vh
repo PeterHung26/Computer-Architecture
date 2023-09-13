@@ -35,14 +35,14 @@ interface control_unit_if;
     logic dwrite;
     //halt and flushed
     logic halt;
-    logic flushed;
+    //logic flushed;
     //Flag from ALU
     logic zero;
     logic negative;
     logic overflow;
 
     modport cu(
-        input Equal, opcode, funct, shamt, flushed, zero, negative, overflow, 
+        input Equal, opcode, funct, shamt, zero, negative, overflow, 
         output ExtOp, ALUSrc, MemtoReg, Branch, Jump, JR, RegDst, RegWr, ALUCtr, JumpReg, LUI, LDsel, SVsel, 
         // Control signal
         iread, dread, dwrite,
@@ -56,7 +56,7 @@ interface control_unit_if;
         iread, dread, dwrite,
         // Signal to request unit
         halt,
-        output Equal, opcode, funct, shamt, flushed, zero, negative, overflow
+        output Equal, opcode, funct, shamt, zero, negative, overflow
     );
 endinterface
 `endif

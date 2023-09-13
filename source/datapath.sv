@@ -38,8 +38,8 @@ module datapath (
   // DUT
   alu ALU (CLK, aluif);
   register_file RF (CLK, nRST, rfif);
-  control_unit CU (CLK, cuif);
-  request_unit RU (CLK, ruif);
+  control_unit CU (CLK, nRST, cuif);
+  request_unit RU (CLK, nRST, ruif);
   program_counter PC (CLK, nRST, pcif);
   extender EX (CLK, exif);
   // Signal connected
@@ -53,16 +53,22 @@ module datapath (
   assign pcif.ihit = dpif.ihit;
   assign pcif.bimm = exif.ext_imm;
   assign pcif.jimm = dpif.imemload[25:0];
-  assign pcif.draddr = rfif.rdat1;
+  assign pcif.jraddr = rfif.rdat1;
 
   // Register File
-  assign rfif.WEN = cuif.RegWr;
+  //assign rfif.WEN = cuif.RegWr;
   assign rfif.rsel1 = dpif.imemload[25:21]; // rs
   assign rfif.rsel2 = dpif.imemload[20:16]; // rt
   always_comb begin : RF_MUX
-    rfif.wsel = 2'b0;
-    dout1 = dout;
-    casez (cuif.RegDst)
+    if(cuif.RegDst == 2'd0)
+      rfif.wsel = dpif.imemload[20:16]; // rt
+    else if(cuif.RegDst == 2'd1)
+      rfif.wsel = dpif.imemload[15:11]; // rd
+    else if(cuif.RegDst == 2'd2)
+      rfif.wsel = 5'd31; // return address register
+    else
+      rfif.wsel = dpif.imemload[20:16];
+    /*casez (cuif.RegDst)
       2'd0: begin
         rfif.wsel = dpif.imemload[20:16]; // rt
       end
@@ -71,8 +77,11 @@ module datapath (
       end
       2'd2: begin
         rfif.wsel = 5'd31; // return address register
+      end
+      default: begin
+        rfif.wsel = 2'b0;
       end 
-    endcase
+    endcase*/
     if(cuif.MemtoReg)
       dout = dpif.dmemload;
     else
@@ -84,11 +93,18 @@ module datapath (
       dout1 = {24'b0, dout[7:0]};
     else if(cuif.LDsel == 2'd2)
       dout1 = {16'b0, dout[15:0]};
+    else
+      dout1 = dout;
 
     if(cuif.JumpReg)
       rfif.wdat = pcif.nxt_pc;
     else
       rfif.wdat = dout1;
+    if((dpif.ihit == 1) || (dpif.dhit == 1))
+      rfif.WEN = cuif.RegWr;
+    else
+      rfif.WEN = 1'b0;
+
   end
 
   // Extender
@@ -113,10 +129,10 @@ module datapath (
   assign cuif.zero = aluif.zero;
   assign cuif.negative = aluif.negative;
   assign cuif.overflow = cuif.overflow;
-  assign cuif.opcode = dpif.imemload[31:26];
-  assign cuif.funct = dpif.imemload[5:0];
-  assign cuif.shamt = dpif.imemload[11:6];
-  assign cuif.flushed = dpif.flushed;
+  assign cuif.opcode = opcode_t'(dpif.imemload[31:26]);
+  assign cuif.funct = funct_t'(dpif.imemload[5:0]);
+  assign cuif.shamt = dpif.imemload[10:6];
+  //assign cuif.flushed = dpif.flushed;
 
   // Request Unit
   assign ruif.dhit = dpif.dhit;
@@ -128,18 +144,18 @@ module datapath (
   // Data path output
   assign dpif.datomic = ruif.datomic;
   assign dpif.halt = cuif.halt;
-  assign dpif.imemREN = ruif.imemREN;
+  assign dpif.imemREN = ruif.imemREN; // Update
   assign dpif.imemaddr = pcif.pcaddr;
   assign dpif.dmemREN = ruif.dmemREN;
   assign dpif.dmemWEN = ruif.dmemWEN;
   assign dpif.dmemaddr = aluif.portout;
   always_comb begin : DP_MUX
-    dmemstore = rfif.rdat2;
+    dpif.dmemstore = rfif.rdat2;
     if(cuif.SVsel == 2'd0)
-      dmemstore = rfif.rdat2;
+      dpif.dmemstore = rfif.rdat2;
     else if(cuif.SVsel == 2'd1)
-      dmemstore = {24'b0, rdat2[7:0]};
+      dpif.dmemstore = {24'b0, rfif.rdat2[7:0]};
     else if(cuif.SVsel == 2'd2)
-      dmemstore = {16'b0, rdat2[15:0]};
+      dpif.dmemstore = {16'b0, rfif.rdat2[15:0]};
   end
 endmodule

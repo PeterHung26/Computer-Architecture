@@ -3,9 +3,9 @@
   #------------------------------------------------------------------
 
   org 0x0000
-  ori   $1,$zero,0xD269
+  ori   $1,$zero,0x0064
   ori   $2,$zero,0x37F1
-  ori   $3,$zero,0xD269
+  ori   $3,$zero,0x0064
   beq   $1, $2, UNIT
   ori   $4,$zero,0xdead
   sw    $4, 0($1)

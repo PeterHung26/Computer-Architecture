@@ -3,39 +3,32 @@
 
 module request_unit(
     input logic CLK,
+    input logic nRST,
     request_unit_if.ru ruif
 );
 
 import cpu_types_pkg::*;
 
-always_comb begin : READ_AND_WRITE_REQUEST
-    ruif.dmemREN = 1'b0;
-    ruif.dmemWEN = 1'b0;
-    ruif.imemREN = 1'b0;
-    if(ruif.dread) begin
-        if(ruif.dhit) begin
-            ruif.dmemREN = 1'b0;
-        end
-        else begin
-            ruif.dmemREN = 1'b1;
-        end
+always_ff @( posedge CLK, negedge nRST ) begin : READ_AND_WRITE_REQUEST
+    if(!nRST) begin
+        ruif.dmemREN <= '0;
+        ruif.dmemWEN <= '0;
     end
-    if(ruif.dwrite) begin
-        if(ruif.dhit) begin
-            ruif.dmemWEN = 1'b0;
-        end
-        else begin
-            ruif.dmemWEN = 1'b1;
-        end
-    end
-    if(ruif.iread) begin
+    else begin
         if(ruif.ihit) begin
-            ruif.imemREN = 1'b0;
+            ruif.dmemREN <= ruif.dread;
+            ruif.dmemWEN <= ruif.dwrite;
         end
-        else begin
-            ruif.imemREN = 1'b1;
+        else if(ruif.dhit) begin
+            ruif.dmemREN <= 1'b0;
+            ruif.dmemWEN <= 1'b0;
         end
+        /*else
+            ruif.dmemREN <= ruif.dmemREN;
+            ruif.dmemWEN <= ruif.dmemWEN;*/
     end
 end
+
+assign ruif.imemREN = ruif.iread;
 
 endmodule

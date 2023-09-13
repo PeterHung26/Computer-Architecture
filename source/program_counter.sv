@@ -27,7 +27,7 @@ end
 always_comb begin : NXT_PCADDR
     pcif.nxt_pc = pcif.pcaddr + 4;
     if(pcif.Branch)
-        temp1 = pcif.pcaddr + (pcif.bimm << 2);
+        temp1 = pcif.pcaddr + {pcif.bimm[29:0], 2'b0} + 4;
     else
         temp1 = pcif.nxt_pc;
     if(pcif.Jump)

@@ -6,7 +6,7 @@
 module request_unit_tb;
 
     parameter PERIOD = 10;
-    logic CLK = 0;
+    logic CLK = 0, nRST;
     // clock
     always #(PERIOD/2) CLK++;
 
@@ -15,10 +15,11 @@ module request_unit_tb;
     // test program
     test #(.PERIOD (PERIOD)) PROG (
         .clk(CLK),
+        .nRST(nRST),
         .ruif(ruif)
     );
     `ifndef MAPPED
-        request_unit RU(CLK, ruif);
+        request_unit RU(CLK, nRST, ruif);
     `else
         request_unti RU(
             .\ruif.dhit (ruif.dhit),
@@ -30,6 +31,7 @@ module request_unit_tb;
             .\ruif.dmemWEN (ruif.dmemWEN),
             .\ruif.dmemREN (ruif.dmemREN),
             .\ruif.imemREN (ruif.imemREN),
+            .\nRST(nRST),
             .\CLK (CLK)
         );
     `endif
@@ -38,12 +40,26 @@ endmodule
 
 program test(
   input logic clk,
+  output logic nRST,
   request_unit_if ruif
 );
     import cpu_types_pkg::*;
     parameter PERIOD = 10;
     int tb_test_num;
     string tb_test_case;
+
+    task reset();
+    begin
+        tb_test_case = "RESET";
+        tb_test_num++;
+        nRST = 0;
+        @(posedge clk);
+        @(posedge clk);
+        @(posedge clk);
+        @(negedge clk);
+        nRST = 1;
+    end
+    endtask
 
     task d_enable;
     input string dcase;
@@ -56,7 +72,8 @@ program test(
         ruif.dhit = hit;
         ruif.dwrite = dwen;
         ruif.dread = dren;
-        #PERIOD;
+        @(posedge clk);
+        @(negedge clk);
     end
     endtask
 
@@ -69,24 +86,17 @@ program test(
         tb_test_num++;
         ruif.ihit = hit;
         ruif.iread = iren;
-        #PERIOD;
+        @(posedge clk);
+        @(negedge clk);
     end
     endtask
 
     task check_ioutput;
     begin
-        if(ruif.ihit) begin
-            if(ruif.imemREN)
-                $display("Error imemREN value when ihit = 1");
-            else
-                $display("Correct imemREN value when ihit = 1");
-        end
-        else begin
-            if(ruif.imemREN == ruif.iread)
-                $display("Correct imemREN value when ihit = 0");
-            else
-                $display("Error imemREN value when ihit = 0");
-        end
+        if(ruif.imemREN == ruif.iread)
+            $display("Correct imemREN value");
+        else
+            $display("Error imemREN value");
     end
     endtask
     
@@ -114,7 +124,16 @@ program test(
     initial begin
         tb_test_num = 0;
         tb_test_case = "Start testing";
+        ruif.iread = 0;
+        ruif.dread = 0;
+        ruif.dwrite = 0;
+        ruif.ihit = 0;
+        ruif.dhit = 0;
         #PERIOD;
+        //Reset
+        reset();
+        check_ioutput();
+        check_doutput();
         // ihit = 0, iread = 0
         i_enable("ihit = 0, iread = 0", 0, 0);
         check_ioutput();

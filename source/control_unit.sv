@@ -3,10 +3,12 @@
 
 module control_unit(
     input logic CLK,
+    input logic nRST,
     control_unit_if.cu cuif
 );
 
 import cpu_types_pkg::*;
+logic haltt;
 always_comb begin : CONTROL
     cuif.ExtOp = 1'b0;
     cuif.ALUSrc = 1'b0;
@@ -24,7 +26,11 @@ always_comb begin : CONTROL
     cuif.iread = 1'b1;
     cuif.dread = 1'b0;
     cuif.dwrite = 1'b0;
-    cuif.halt = 1'b0;
+    haltt = 1'b0;
+    if(cuif.halt)
+        cuif.iread = 1'b0;
+    else
+        cuif.iread = 1'b1;
     casez (cuif.opcode)
     RTYPE: begin
         casez (cuif.funct)
@@ -227,10 +233,18 @@ always_comb begin : CONTROL
         cuif.dwrite = 1'b1;
     end
     HALT: begin
-        cuif.iread = 1'b0;
-        cuif.halt = 1'b1;
+        haltt = 1'b1;
     end 
     endcase
+end
+
+always_ff @( posedge CLK, negedge nRST ) begin : HALT_LATCH
+    if(!nRST) begin
+        cuif.halt <= '0;
+    end
+    else begin
+        cuif.halt <= haltt;
+    end
 end
 
 endmodule
