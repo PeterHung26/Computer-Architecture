@@ -12,6 +12,7 @@ interface program_counter_if;
     logic Branch;
     logic Jump;
     logic JR;
+    logic PC_EN;
     logic ihit;
 
     // branch offset and jump location
@@ -24,13 +25,13 @@ interface program_counter_if;
     word_t pcaddr;
 
     modport pc(
-        input Branch, Jump, JR, ihit, bimm, jimm, jraddr,
+        input Branch, Jump, JR, bimm, jimm, jraddr, ihit, 
         output nxt_pc, pcaddr
     );
 
     modport tb(
         input nxt_pc, pcaddr,
-        output Branch, Jump, JR, ihit, bimm, jimm, jraddr
+        output Branch, Jump, JR, bimm, jimm, jraddr, ihit
     );
 endinterface
 `endif
