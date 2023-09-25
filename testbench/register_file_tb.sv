@@ -21,24 +21,18 @@ module register_file_tb;
   int v1 = 1;
   int v2 = 4721;
   int v3 = 25119;
-  
-  //int i;
-  //int tb_test_num;
+
   // clock
   always #(PERIOD/2) CLK++;
 
   // interface
-  register_file_if rfif();
+  register_file_if rfif ();
   // test program
-  test #(.PERIOD (PERIOD)) PROG (
-    .clk(CLK),
-    .n_rst(nRST),
-    .rfif(rfif.tb)
-  );
+  test PROG ();
   // DUT
 `ifndef MAPPED
-  register_file DUT(CLK, nRST, rfif);
-`else
+  register_file DUT(CLK, nRST,  rfif);
+`else//rf[0] = '0
   register_file DUT(
     .\rfif.rdat2 (rfif.rdat2),
     .\rfif.rdat1 (rfif.rdat1),
@@ -47,109 +41,56 @@ module register_file_tb;
     .\rfif.rsel1 (rfif.rsel1),
     .\rfif.wsel (rfif.wsel),
     .\rfif.WEN (rfif.WEN),
-    .\n_rst (nRST),
-    .\clk (CLK)
+    .\nRST (nRST),
+    .\CLK (CLK)
   );
 `endif
 
+
+
 endmodule
 
-program test(
-  input logic clk,
-  output logic n_rst,
-  register_file_if rfif
-);
-parameter PERIOD = 10;
-int i;
-int tb_test_num;
-
-task reset_dut;
-  begin
-    n_rst = 0;
-    @(posedge clk);
-    @(posedge clk);
-    @(negedge clk);
-    n_rst = 1;
-    @(posedge clk);
-  end
-  endtask
-
-task write_reg;
-  input int num;
-  input int data;
-  begin
-    @(negedge clk);
-    rfif.WEN = 1'b1;
-    rfif.wsel = num;
-    rfif.wdat = data;
-    @(negedge clk);
-    rfif.WEN = 1'b0;
-  end
-endtask
-
-task read1_reg;
-  input int num;
-  input [31:0] exp_rdat;
-  begin
-    @(negedge clk);
-    rfif.rsel1 = num;
-    @(negedge clk);
-    assert(rfif.rdat1 == exp_rdat) 
-      $display("Register %0d is as expected read by rdat1", num);
-    else
-      $display("Register %0d is not as expected read by rdat1", num);
-  end
-endtask
-
-task read2_reg;
-  input int num;
-  input [31:0] exp_rdat;
-  begin
-    @(negedge clk);
-    rfif.rsel2 = num;
-    @(negedge clk);
-    assert (rfif.rdat2 == exp_rdat)
-      $display("Register %0d is as expected read by rdat2", num);
-    else
-      $display("Register %0d is not as expected read by rdat2", num);
-  end
-endtask
-
+program test;
+integer i;
 initial begin
-//Test case 1: Reset the DUT
-  tb_test_num = 1;
-  rfif.WEN = 1'b0;
-  reset_dut();
-  for(i = 0; i < 32; i++) begin
-    read1_reg(i, 0);
-    read2_reg(i, 0);
-  end
-  //Test case 2: Write with WEN = 1'b0
-  tb_test_num ++;
-  @(negedge clk);
-  rfif.WEN = 1'b0;
-  rfif.wdat = 32'd456;
-  rfif.wsel = 5'd3;
-  @(negedge clk);
-  read1_reg(3, 0);
-  read2_reg(3, 0);
-  //Test case 2: Write and Read Register 0
-  tb_test_num ++;
-  write_reg(0, 500);
-  read1_reg(0,0);
-  read2_reg(0,0);
-  //Test case 3: Write and read specific register
-  tb_test_num ++;
-  write_reg(10,989);
-  read1_reg(10,989);
-  read2_reg(10,989);
-  //Test case 3: Write and read other register
-  tb_test_num++;
-  for(i = 0; i < 32; i++) begin
-    write_reg(i, i);
-    read1_reg(i, i);
-    read2_reg(i, i);
-  end
-  $stop();
-end
+    
+		//
+    register_file_tb.rfif.rsel1 = '0;
+	  register_file_tb.rfif.rsel2 = '0;
+	  register_file_tb.rfif.WEN = '0;
+	  register_file_tb.rfif.wdat = '0;
+	  register_file_tb.rfif.wsel = '0;
+    #(register_file_tb.PERIOD);
+    register_file_tb.nRST = 0;
+		#(register_file_tb.PERIOD);
+		register_file_tb.nRST = 1;
+		#(register_file_tb.PERIOD);
+		//register_file_tb.nRST = '0;
+		#(register_file_tb.PERIOD);
+		// READ
+
+
+    register_file_tb.rfif.WEN = 1;
+    register_file_tb.rfif.wdat = 32;
+    for (i=0;i<32;i++) begin
+      #(register_file_tb.PERIOD*2);
+      register_file_tb.rfif.wdat--;
+      register_file_tb.rfif.wsel++;      
+    end
+    register_file_tb.rfif.WEN = 0;
+    for (i=0;i<32;i++) begin
+      #(register_file_tb.PERIOD*2);
+      register_file_tb.rfif.rsel1++;
+      register_file_tb.rfif.rsel2++;
+    end
+    
+
+
+
+    //register_file_tb.rfif.rdat1 = '1;
+    //#(register_file_tb.PERIOD);
+    
+      
+
+end	
 endprogram

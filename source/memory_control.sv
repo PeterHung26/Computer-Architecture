@@ -4,6 +4,12 @@
 
   this block is the coherence protocol
   and artibtration for ram
+  The final piece is the memory_control, 
+  this component talks to ram and relays that information to the datapath. 
+  This component needs to arbitrate the ram between instruction fetch and the load/store of data 
+  as there is only one port on the ram only one of those actions can take place. 
+  It will give priority to the data operations. 
+  It is the job of the memory_control to ensure smooth utilization of ram. 
 */
 
 // interface include
@@ -13,7 +19,7 @@
 `include "cpu_types_pkg.vh"
 
 module memory_control (
-  input logic CLK, nRST,
+  input CLK, nRST,
   cache_control_if.cc ccif
 );
   // type import
@@ -21,55 +27,39 @@ module memory_control (
 
   // number of cpus for cc
   parameter CPUS = 1;
-  always_comb begin : ENABLE_ADDRESS_AND_LOAD
-    ccif.ramWEN = 1'b0;
-    ccif.ramREN = 1'b0;
-    ccif.ramaddr = '0;
-    ccif.ramstore = 1'b0;
-    ccif.iload = '0;
-    ccif.dload = '0;
-    if(ccif.dWEN) begin //write data has first priority
-      ccif.ramWEN = 1'b1;
-      ccif.ramaddr = ccif.daddr;
-      ccif.ramstore = ccif.dstore;
-    end
-    else if(ccif.dREN) begin // read data has second priority
-      ccif.ramREN = 1'b1;
-      ccif.ramaddr = ccif.daddr;
-      ccif.dload = ccif.ramload;
-    end
-    else if(ccif.iREN) begin // read instruction has third priority
-      ccif.ramREN = 1'b1;
-      ccif.ramaddr = ccif.iaddr;
-      ccif.iload = ccif.ramload;
+  
+
+  // inputs cc <- cache
+  // iREN, dREN, dWEN, dstore, iaddr, daddr,
+  // inputs cc <- ram
+  // ramload(word_t), ramstate,
+  // ramstate
+  // FREE,    BUSY,    ACCESS,    ERROR
+  
+  always_comb begin
+    ccif.dwait = 1'b1;
+    ccif.iwait = 1'b1;
+    if(ccif.ramstate == ACCESS) begin
+      if(ccif.dWEN || ccif.dREN) ccif.dwait = '0;
+      else if(ccif.iREN) ccif.iwait = '0;
     end
   end
 
-  always_comb begin : IWAIT_AND_DWAIT
-    ccif.dwait = 1'b1;
-    ccif.iwait = 1'b1;
-    if(ccif.ramstate == FREE) begin
-      ccif.dwait = 1'b1;
-      ccif.iwait = 1'b1;
-    end
-    else if(ccif.ramstate == BUSY) begin
-      ccif.dwait = 1'b1;
-      ccif.iwait = 1'b1;
-    end
-    else if(ccif.ramstate == ACCESS) begin
-      if(ccif.dWEN || ccif.dREN) begin
-        ccif.dwait = 1'b0;
-        ccif.iwait = 1'b1;
-      end
-      else begin
-        ccif.dwait = 1'b1;
-        ccif.iwait = 1'b0;
-      end
-    end
-    else if(ccif.ramstate == ERROR)begin
-      ccif.dwait = 1'b1;
-      ccif.iwait = 1'b1;
-    end
-  end
-  
+
+  // outputs cc -> cache 
+  // iwait, dwait, iload, dload,
+  //assign ccif.iwait  = ()
+  //assign ccif.dwait  = ()
+  assign ccif.iload  = ccif.ramload; //(ccif.iREN) ? ccif.ramload; : '0;
+  assign ccif.dload  = ccif.ramload; //(ccif.dREN) ? ccif.ramload; : '0;
+
+  // outputs cc -> ram
+  // ramstore(word_t), ramaddr, ramWEN, ramREN,
+  // Data first
+  assign ccif.ramstore  = ccif.dstore; // ?
+  assign ccif.ramaddr   = (ccif.dWEN || ccif.dREN) ? ccif.daddr : ccif.iaddr; //ccif.iREN ? ccif.iaddr : '0;
+  assign ccif.ramWEN    = ccif.dWEN;
+  assign ccif.ramREN    = (ccif.dREN || ccif.iREN) && ~ccif.dWEN;
+
 endmodule
+

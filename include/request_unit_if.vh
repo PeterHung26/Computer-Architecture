@@ -1,34 +1,26 @@
 `ifndef REQUEST_UNIT_IF_VH
 `define REQUEST_UNIT_IF_VH
 
-// types
 `include "cpu_types_pkg.vh"
 
+// The request_unit will detect when memory requests are completed in
+// the datapath and take actions to deassert the memory request.
+
 interface request_unit_if;
-    // import types
-    import cpu_types_pkg::*;
+  // import types
+  import cpu_types_pkg::*;
 
-    // Signal with Caches
-    logic datomic;
-    logic dmemWEN;
-    logic dmemREN;
-    logic imemREN;
-    logic dhit;
-    logic ihit;
+  logic     dWEN, dREN, dhit, ihit, dMemWEN, dMemREN;
 
-    // Signal with Control unit
-    logic dread;
-    logic dwrite;
-    logic iread;
-
-    modport ru(
-        input dhit, ihit, dread, dwrite, iread,
-        output datomic, dmemWEN, dmemREN, imemREN
-    );
-
-    modport tb(
-        input datomic, dmemWEN, dmemREN, imemREN,
-        output dhit, ihit, dread, dwrite, iread
-    );
+  // register file ports
+  modport ru (
+    input   dWEN, dREN, dhit,ihit,  
+    output  dMemWEN, dMemREN
+  );
+  // register file tb
+  modport tb (
+    input   dMemWEN, dMemREN,
+    output  dWEN, dREN, dhit,ihit
+  );
 endinterface
 `endif

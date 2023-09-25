@@ -1,23 +1,34 @@
-  #------------------------------------------------------------------
-  # JUMP Test Program
-  #------------------------------------------------------------------
+org 0x0000
+ori $1, $0, 1
+ori $2, $0, 2
+ori $3, $0, 3
+ori $9, $0, 0x0080
+jal JUMP1
+sw $2, 4($9)
+sw $2, 4($9)
+sw $2, 4($9)
+sw $2, 4($9)
+sw $2, 4($9)
+jal JUMP2
+j END
+sw $3, 16($9)
+halt
+sw $3, 20($9)
 
-  org 0x0000
-  ori   $1,$zero,0x0064
-  ori   $2,$zero,0x37F1
-  j     UNIT
-  ori   $4,$zero,0xdead
-  sw    $4, 0($1)
 
 
-  UNIT:
-  ori   $4,$zero,0xadcc
-  sw    $4, 4($1)
-  j     UNIT2
-  ori   $4,$zero,0xacdc
-  sw    $4, 8($1)
+JUMP1:
+sw $1, 0($9)
+jr $31
 
-  UNIT2:
-  ori   $4,$zero,0xbadd
-  sw    $4, 12($1)
-  halt
+
+
+
+
+END:
+sw $3, 8($9)
+halt
+
+JUMP2:
+jr $31
+sw $3, 12($9)

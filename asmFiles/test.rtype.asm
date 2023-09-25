@@ -25,7 +25,8 @@
   srlv  $12,$14,$1
   nor   $13,$1,$2
 # Store them to verify the results
-  sw    $13,0($22)
+
+  sw    $13,4($22)
   sw    $3,0($21)
   sw    $4,4($21)
   sw    $5,8($21)

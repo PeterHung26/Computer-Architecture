@@ -1,27 +1,23 @@
 `ifndef ALU_IF_VH
 `define ALU_IF_VH
-
-// all types
 `include "cpu_types_pkg.vh"
 
 interface alu_if;
-  import cpu_types_pkg::*;
+    import cpu_types_pkg::*; // types
 
-  logic negative, overflow, zero;
-  word_t porta, portb, portout;
-  aluop_t aluop;
+    word_t a, b, out;
+    aluop_t ops;
+    logic negative, overflow, zero;
 
-  //alu port
-  modport alu(
-    input porta, portb, aluop,
-    output portout, negative, overflow, zero
-  );
+    modport alu(
+        input a,b,ops,
+        output negative, overflow, zero, out
+    );
 
-  //testbench port
-  modport tb(
-    input portout, negative, overflow, zero,
-    output porta, portb, aluop
-  );
+    modport tb (
+        input negative, overflow, zero, out,
+        output a,b,ops
+    );
+
 endinterface
-
 `endif

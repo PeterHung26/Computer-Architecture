@@ -1,60 +1,42 @@
 `include "alu_if.vh"
 `include "cpu_types_pkg.vh"
-
-module alu(
-    input logic clk,
-    alu_if.alu aluif
+module alu
+(
+  alu_if.alu aluif
 );
+    import cpu_types_pkg::*;
 
-import cpu_types_pkg::*;
-assign aluif.zero = (aluif.portout == '0) ? 1'b1 : 1'b0;
-assign aluif.negative = (aluif.portout[31] == 1'b1) ? 1'b1 : 1'b0;
+    // word_t b_s;
+    // assign b_s = ~aluif.b + 1;
 
-always_comb begin : ALU
-    aluif.overflow = 1'b0;
-    aluif.portout = '0;
-    casez (aluif.aluop)
-    ALU_SLL: begin
-        aluif.portout = aluif.portb << aluif.porta[4:0];
-        aluif.overflow = 1'b0;
-    end
-    ALU_SRL: begin
-        aluif.portout = aluif.portb >> aluif.porta[4:0];
-        aluif.overflow = 1'b0;
-    end
-    ALU_ADD: begin
-        aluif.portout = signed'(aluif.porta) + signed'(aluif.portb);
-        aluif.overflow = (aluif.porta[31] == aluif.portb[31]) && (aluif.porta[31] != aluif.portout[31]);
-    end
-    ALU_SUB: begin
-        aluif.portout = signed'(aluif.porta) - signed'(aluif.portb);
-        aluif.overflow = (aluif.porta[31] != aluif.portb[31]) && (aluif.porta[31] != aluif.portout[31]);
-    end
-    ALU_AND: begin
-        aluif.portout = aluif.porta & aluif.portb;
-        aluif.overflow = 1'b0;
-    end
-    ALU_OR: begin
-        aluif.portout = aluif.porta | aluif.portb;
-        aluif.overflow = 1'b0;
-    end
-    ALU_XOR: begin
-        aluif.portout = aluif.porta ^ aluif.portb;
-        aluif.overflow = 1'b0;
-    end
-    ALU_NOR: begin
-        aluif.portout = ~(aluif.porta | aluif.portb);
-        aluif.overflow = 1'b0;
-    end
-    ALU_SLT: begin
-        aluif.portout = (signed'(aluif.porta)< signed'(aluif.portb)) ? 32'd1 : 32'b0;
-        aluif.overflow = 1'b0;
-    end
-    ALU_SLTU: begin
-        aluif.portout = (aluif.porta < aluif.portb) ? 32'd1 : 32'b0;
-        aluif.overflow = 1'b0;
-    end
+//ffffffff
+//ffffffff
+
+always_comb begin
+    aluif.out = '0;
+    aluif.overflow = '0;
+    case(aluif.ops)  //casez?
+        ALU_SLL:    aluif.out = aluif.b << aluif.a[4:0];  // aluif.b?
+        ALU_SRL:    aluif.out = aluif.b >> aluif.a[4:0]; // aluif.b?
+        ALU_ADD:    begin 
+                        aluif.out = aluif.a + aluif.b;
+                        aluif.overflow = ( aluif.a[31] == aluif.b[31] && aluif.out[31] != aluif.a[31] );
+                    end
+
+        ALU_SUB:    begin 
+                        aluif.out = aluif.a - aluif.b;
+                        aluif.overflow = ( aluif.a[31] != aluif.b[31] && aluif.out[31] != aluif.a[31] );
+                    end
+        ALU_AND:    aluif.out = aluif.a & aluif.b;
+        ALU_OR:     aluif.out = aluif.a | aluif.b;
+        ALU_XOR:    aluif.out = aluif.a ^ aluif.b;
+        ALU_NOR:    aluif.out = ~(aluif.a | aluif.b);
+        ALU_SLT:    aluif.out = (  $signed(aluif.a) < $signed(aluif.b)  );
+        ALU_SLTU:   aluif.out = (  aluif.a < aluif.b);
     endcase
 end
+
+    assign aluif.zero = (aluif.out == 0);
+    assign aluif.negative = (aluif.out[31] == 1);
 
 endmodule

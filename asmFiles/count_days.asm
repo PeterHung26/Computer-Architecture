@@ -1,57 +1,66 @@
-  org 0x0000
-  ori $29, $0, 0xfffc //Initialize the stack pointer
-  MAIN:
-  ori $6, $0, 22 // Set Day
-  ori $7, $0, 8 // Set Month
-  ori $8, $0, 2023 // Set Year
+org 0x0000
 
-  addi $1, $7, -1
-  ori $2, $0, 30
-  addi $29, $29, -4 // Push Month-1
-  sw $1, 4($29)
-  addi $29, $29, -4 // Push 30
-  sw $2, 4($29)
-  jal START
-  lw $7, 4($29) // Pop result out
-  addi $29, $29, 4
-  
-  addi $1, $8, -2000
-  ori $2, $0, 365
-  addi $29, $29, -4 // Push Year-2000
-  sw $1, 4($29)
-  addi $29, $29, -4 // Push 365
-  sw $2, 4($29)
-  jal START
-  lw $8, 4($29) // Pop result out
-  addi $29, $29, 4
-  
-  add $1, $6, $7
-  add $1, $1, $8
-  halt
+MAIN:
+    ori $29, $0, 0xFFFC
+    ori $2, $0, 22
+    ori $3, $0, 8
+    ori $4, $0, 2023
 
 
-  START:
-  ori $5, $0, 0xfff8 // Set register 5 as fff8 to decide when to end
-  beq $29, $5, DONE
 
-  lw $1, 4($29) // Pop first data
-  addi $29, $29, 4
+CALC:
+    add $3
 
-  lw $2, 4($29) // Pop second data
-  addi $29, $29, 4
-  
-  ori $3, $0, 0x0000 // Set register 3 to 0 for later use
 
-  MUL:
-  beq $2, $0, EXIT
-  add $3, $1, $3
-  addi $2, $2, -1
-  j MUL
+# month
+    addi $5, $3, -1
+    ori $6, $0, 30
+    addi $28, $29, -4
+    push $5
+    push $6
+    jal MULT_PROC
+    pop $20
 
-  EXIT:
-  addi $29, $29, -4 // Push the result
-  sw $3, 4($29)
-  j START
+# year
+    and $5, $5, $0
+    and $6, $6, $0
 
-  DONE:
-  jr $31
+    addi $5, $4, -2000
+    ori $6, $0, 365
+    addi $28, $29, -4
+    push $5
+    push $6
+    jal MULT_PROC
+    pop $21
+
+# sum days
+    add $22, $20, $21    
+    add $22, $22, $2
+
+EXIT:
+    halt
+
+
+
+# MULT_PROC
+MULT_PROC:
+    beq $29, $28, END2
+    j MULT
+
+END2:
+    jr $31
+
+MULT:
+    pop $5
+    pop $6
+    ori $7, $0, 0
+
+LOOP:
+    beq $6, $0, END
+    add $7, $7, $5
+    addi $6, $6, -1
+    j LOOP
+
+END:
+    push $7
+    j MULT_PROC

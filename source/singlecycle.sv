@@ -6,7 +6,6 @@
   holds data path components
   and cache level
 */
-
 module singlecycle (
   input logic CLK, nRST,
   output logic halt,
