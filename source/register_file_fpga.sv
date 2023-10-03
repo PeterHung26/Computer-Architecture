@@ -5,7 +5,6 @@
   register file fpga wrapper
 */
 
-
 // interface
 `include "register_file_if.vh"
 

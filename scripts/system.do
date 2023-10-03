@@ -41,13 +41,14 @@ add wave -noupdate -expand -group {Register File} /system_tb/DUT/CPU/DP/RF/rfif/
 add wave -noupdate -expand -group {Register File} /system_tb/DUT/CPU/DP/RF/rfif/wdat
 add wave -noupdate -expand -group {Register File} /system_tb/DUT/CPU/DP/RF/rfif/rdat1
 add wave -noupdate -expand -group {Register File} /system_tb/DUT/CPU/DP/RF/rfif/rdat2
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/Jump
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/JR
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/bimm
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/jimm
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/jraddr
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/nxt_pc
-add wave -noupdate -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/pcaddr
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/pcif/PC_EN
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/Jump
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/JR
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/bimm
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/jimm
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/jraddr
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/nxt_pc
+add wave -noupdate -expand -group {Program Counter} /system_tb/DUT/CPU/DP/PC/pcif/pcaddr
 add wave -noupdate -group {Hazard Unit} /system_tb/DUT/CPU/DP/huif/dhit
 add wave -noupdate -group {Hazard Unit} /system_tb/DUT/CPU/DP/huif/ihit
 add wave -noupdate -group {Hazard Unit} /system_tb/DUT/CPU/DP/huif/cu_halt
@@ -177,7 +178,7 @@ add wave -noupdate -group {Forward Unit} /system_tb/DUT/CPU/DP/fuif/MEM_RegWrite
 add wave -noupdate -group {Forward Unit} /system_tb/DUT/CPU/DP/fuif/forwarda
 add wave -noupdate -group {Forward Unit} /system_tb/DUT/CPU/DP/fuif/forwardb
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {658438 ps} 0}
+WaveRestoreCursors {{Cursor 1} {64121 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 200
 configure wave -valuecolwidth 100

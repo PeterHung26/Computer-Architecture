@@ -1,3 +1,9 @@
+/*
+  Eric Villasenor
+  evillase@gmail.com
+
+  register file interface
+*/
 `ifndef REGISTER_FILE_IF_VH
 `define REGISTER_FILE_IF_VH
 

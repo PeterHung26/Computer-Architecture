@@ -5,263 +5,339 @@
 
 module pipeline_register(
  input logic CLK, input logic nRST,
- pipeline_register_if ppif
+ pipeline_register_if.pr prif
  );
  import cpu_types_pkg::*;
 // pipeline registers
-
+//IF
+logic [31:0]  nxt_IF_instr;
+logic [31:0]  nxt_IF_pc4;
+//ID
+logic [31:0]  nxt_ID_pc4;
+logic [1:0]   nxt_ID_RegDst;
+logic         nxt_ID_RegWrite;
+logic         nxt_ID_MemtoReg;
+logic         nxt_ID_dread;
+logic         nxt_ID_dwrite;
+logic         nxt_ID_BEQ;
+logic         nxt_ID_BNE;
+logic         nxt_ID_JumpReg;
+logic         nxt_ID_ExtOP;
+logic         nxt_ID_ALUSrc;
+logic         nxt_ID_LUI;
+aluop_t       nxt_ID_ALUCtr;
+logic [31:0]  nxt_ID_rdat1;
+logic [31:0]  nxt_ID_rdat2;
+logic [4:0]   nxt_ID_rs;
+logic [4:0]   nxt_ID_rt;
+logic [4:0]   nxt_ID_rd;
+logic [15:0]  nxt_ID_imm16;
+logic         nxt_ID_halt;
+logic         nxt_ID_JR;
+//EX
+logic [31:0]  nxt_EX_pc4;
+logic         nxt_EX_JumpReg;
+logic         nxt_EX_BEQ;
+logic         nxt_EX_BNE;
+logic         nxt_EX_MemtoReg;
+logic         nxt_EX_RegWrite;
+logic         nxt_EX_dread;
+logic         nxt_EX_dwrite;
+logic         nxt_EX_zero;
+logic [31:0]  nxt_EX_portout;
+logic [31:0]  nxt_EX_ext_imm_16;
+logic [4:0]   nxt_EX_wsel;
+logic         nxt_EX_halt;
+logic [31:0]  nxt_EX_dmemstore;
+//MEM
+logic [31:0]  nxt_MEM_pc4;
+logic         nxt_MEM_JumpReg;
+logic         nxt_MEM_MemtoReg;
+logic         nxt_MEM_RegWrite;
+logic [31:0]  nxt_MEM_dmemload;
+logic [31:0]  nxt_MEM_portout;
+logic [4:0]   nxt_MEM_wsel;
+logic         nxt_MEM_halt;
 
 always_ff @ (posedge CLK, negedge nRST) 
 begin
-  if(!nRST)  
-  begin: PIPELINE_RESET
-    //IF/ID
-    ppif.IF_instr      <= '0;
-    ppif.IF_pc4        <= '0;
-    
-
-    //ID/EX
-    ppif.ID_instr       <= '0;
-    ppif.ID_pc4         <= '0;
-    ppif.ID_RegDst      <= '0;
-    ppif.ID_RegWrite    <= '0;
-    ppif.ID_PCSrc       <= '0;
-    ppif.ID_rdat1       <= '0;
-    ppif.ID_rdat2       <= '0;
-    ppif.ID_ALUOP       <= ALU_SLL;
-    ppif.ID_Mem2Reg     <= '0;
-    ppif.ID_JAL         <= '0;
-    ppif.ID_dWEN        <= '0;
-    ppif.ID_dREN        <= '0;
-    ppif.ID_halt        <= '0;
-    ppif.ID_Jump2Reg    <= '0;
-    ppif.ID_BNE         <= '0;
-    ppif.ID_ALUSrc      <= '0;
-    ppif.ID_Jump        <= '0;
-    ppif.ID_LUI2Reg     <= '0;
-    ppif.ID_signExt     <= '0;
-    
-
-
-    //EX/MEM
-    ppif.EX_instr       <= '0;
-    ppif.EX_pc4         <= '0;
-    ppif.EX_RegDst      <= '0;
-    ppif.EX_RegWrite    <= '0;
-    ppif.EX_PCSrc       <= '0;
-    ppif.EX_rdat1       <= '0;
-    ppif.EX_rdat2       <= '0;
-    ppif.EX_ALUOP       <= ALU_SLL;
-    ppif.EX_Mem2Reg     <= '0;
-    ppif.EX_JAL         <= '0;
-    ppif.EX_dWEN        <= '0;
-    ppif.EX_dREN        <= '0;
-    ppif.EX_halt        <= '0;
-    ppif.EX_Jump2Reg    <= '0;
-    ppif.EX_BNE         <= '0;
-    ppif.EX_ALUSrc      <= '0;
-    ppif.EX_Jump        <= '0;
-    ppif.EX_LUI2Reg     <= '0;
-    ppif.EX_signExt     <= '0;
-    ppif.EX_zero        <= '0;
-    ppif.EX_ALUOut      <= '0;
-
-
-    // MEM/WB
-    ppif.MEM_instr       <= '0;
-    ppif.MEM_pc4         <= '0;
-    ppif.MEM_RegDst      <= '0;
-    ppif.MEM_RegWrite    <= '0;
-    ppif.MEM_PCSrc       <= '0;
-    ppif.MEM_rdat1       <= '0;
-    ppif.MEM_rdat2       <= '0;
-    ppif.MEM_ALUOP       <= ALU_SLL;
-    ppif.MEM_Mem2Reg     <= '0;
-    ppif.MEM_JAL         <= '0;
-    ppif.MEM_dWEN        <= '0;
-    ppif.MEM_dREN        <= '0;
-    ppif.MEM_halt        <= '0;
-    ppif.MEM_Jump2Reg    <= '0;
-    ppif.MEM_BNE         <= '0;
-    ppif.MEM_ALUSrc      <= '0;
-    ppif.MEM_Jump        <= '0;
-    ppif.MEM_LUI2Reg     <= '0;
-    ppif.MEM_signExt     <= '0;
-
-    ppif.MEM_dmemload    <= '0;
-    ppif.MEM_ALUOut      <= '0;
+  if(!nRST) begin
+    //IF
+    prif.IF_instr <= '0;
+    prif.IF_pc4 <= '0;
+    //ID
+    prif.ID_pc4 <= '0;
+    prif.ID_RegDst <= '0;
+    prif.ID_RegWrite <= '0;
+    prif.ID_MemtoReg <= '0;
+    prif.ID_dread <= '0;
+    prif.ID_dwrite <= '0;
+    prif.ID_BEQ <= '0;
+    prif.ID_BNE <= '0;
+    prif.ID_JumpReg <= '0;
+    prif.ID_ExtOP <= '0;
+    prif.ID_ALUSrc <= '0;
+    prif.ID_LUI <= '0;
+    prif.ID_ALUCtr <= ALU_SLL;
+    prif.ID_rdat1 <= '0;
+    prif.ID_rdat2 <= '0;
+    prif.ID_rs <= '0;
+    prif.ID_rt <= '0;
+    prif.ID_rd <= '0;
+    prif.ID_imm16 <= '0;
+    prif.ID_halt <= '0;
+    prif.ID_JR <= '0;
+    //EX
+    prif.EX_pc4 <= '0;
+    prif.EX_JumpReg <= '0;
+    prif.EX_BEQ <= '0;
+    prif.EX_BNE <= '0;
+    prif.EX_MemtoReg <= '0;
+    prif.EX_RegWrite <= '0;
+    prif.EX_dread <= '0;
+    prif.EX_dwrite <= '0;
+    prif.EX_zero <= '0;
+    prif.EX_portout <= '0;
+    prif.EX_ext_imm_16 <= '0;
+    prif.EX_wsel <= '0;
+    prif.EX_halt <= '0;
+    prif.EX_dmemstore <= '0;
+    //MEM
+    prif.MEM_pc4 <= '0;
+    prif.MEM_JumpReg <= '0;
+    prif.MEM_MemtoReg <= '0;
+    prif.MEM_RegWrite <= '0;
+    prif.MEM_dmemload <= '0;
+    prif.MEM_portout <= '0;
+    prif.MEM_wsel <= '0;
+    prif.MEM_halt <= '0;
   end
-  else 
-  begin 
-    // IF/ID
-    if(ppif.IF_EN && !ppif.IF_FLUSH) 
-    begin:IFID_REGISTER_EN
-      // IF/ID
-      ppif.IF_instr       <= ppif.IF_instr_in;
-      ppif.IF_pc4         <= ppif.IF_pc4_in;
-    end
-    else if(ppif.IF_EN && ppif.IF_FLUSH) 
-    begin:IFID_REGISTER_FLUSH
-      ppif.IF_instr      <= '0;
-      ppif.IF_pc4        <= '0;
-    end
-
-     // ID/EX
-    if(ppif.ID_EN && !ppif.ID_FLUSH) 
-    begin:IDEX_REGISTER_EN
-      ppif.ID_instr       <= ppif.IF_instr;
-      ppif.ID_pc4         <= ppif.IF_pc4;
-      ppif.ID_RegDst      <= ppif.RegDst_in;
-      ppif.ID_RegWrite    <= ppif.RegWrite_in;
-      ppif.ID_rdat1       <= ppif.rdat1_in;
-      ppif.ID_rdat2       <= ppif.rdat2_in;
-      ppif.ID_ALUOP       <= ppif.ALUOP_in;
-      ppif.ID_Mem2Reg     <= ppif.Mem2Reg_in;
-      ppif.ID_JAL         <= ppif.JAL_in;
-      ppif.ID_dWEN        <= ppif.dWEN_in;
-      ppif.ID_dREN        <= ppif.dREN_in;
-      ppif.ID_halt        <= ppif.halt_in;
-      ppif.ID_Jump2Reg    <= ppif.Jump2Reg_in;
-      ppif.ID_BNE         <= ppif.BNE_in;
-      ppif.ID_ALUSrc      <= ppif.ALUSrc_in;
-      ppif.ID_PCSrc       <= ppif.PCSrc_in;
-      ppif.ID_Jump        <= ppif.Jump_in;
-      ppif.ID_LUI2Reg     <= ppif.LUI2Reg_in;
-      ppif.ID_signExt     <= ppif.signExt_in;
-    end
-    else if(ppif.ID_EN && ppif.IF_FLUSH) 
-    begin:IDEX_REGISTER_FLUSH
-      ppif.ID_instr       <= '0;
-      ppif.ID_pc4         <= '0;
-      ppif.ID_RegDst      <= '0;
-      ppif.ID_RegWrite    <= '0;
-      ppif.ID_PCSrc       <= '0;
-      ppif.ID_rdat1       <= '0;
-      ppif.ID_rdat2       <= '0;
-      ppif.ID_ALUOP       <= ALU_SLL;
-      ppif.ID_Mem2Reg     <= '0;
-      ppif.ID_JAL         <= '0;
-      ppif.ID_dWEN        <= '0;
-      ppif.ID_dREN        <= '0;
-      ppif.ID_halt        <= '0;
-      ppif.ID_Jump2Reg    <= '0;
-      ppif.ID_BNE         <= '0;
-      ppif.ID_ALUSrc      <= '0;
-      ppif.ID_Jump        <= '0;
-      ppif.ID_LUI2Reg     <= '0;
-      ppif.ID_signExt     <= '0;
-    end
-    
-    // EX/MEM
-    if(ppif.EX_EN && !ppif.EX_FLUSH) 
-    begin:EXMEM_REGISTER_EN
-
-      ppif.EX_instr       <= ppif.ID_instr;
-      ppif.EX_pc4         <= ppif.ID_pc4;
-      ppif.EX_RegDst      <= ppif.ID_RegDst;
-      ppif.EX_RegWrite    <= ppif.ID_RegWrite;
-      ppif.EX_rdat1       <= ppif.ID_rdat1;
-      ppif.EX_rdat2       <= ppif.ID_rdat2;
-      ppif.EX_ALUOP       <= ppif.ID_ALUOP;
-      ppif.EX_Mem2Reg     <= ppif.ID_Mem2Reg;
-      ppif.EX_JAL         <= ppif.ID_JAL;
-      ppif.EX_LUI2Reg     <= ppif.ID_LUI2Reg;
-      ppif.EX_dWEN        <= ppif.ID_dWEN;
-      ppif.EX_dREN        <= ppif.ID_dREN;
-      ppif.EX_halt        <= ppif.ID_halt;
-      ppif.EX_Jump2Reg    <= ppif.ID_Jump2Reg;
-      ppif.EX_BNE         <= ppif.ID_BNE;
-      ppif.EX_ALUSrc      <= ppif.ID_ALUSrc;
-      ppif.EX_PCSrc       <= ppif.ID_PCSrc;
-      ppif.EX_Jump        <= ppif.ID_Jump;
-      ppif.EX_signExt     <= ppif.ID_signExt;
-      ppif.EX_zero        <= ppif.EX_zero_in;
-
-      ppif.EX_ALUOut      <= ppif.EX_ALUOut_in;
-    end
-    else if(ppif.EX_EN && ppif.EX_FLUSH) 
-    begin:EXMEM_REGISTER_FLUSH
-      ppif.EX_instr       <= '0;
-      ppif.EX_pc4         <= '0;
-      ppif.EX_RegDst      <= '0;
-      ppif.EX_RegWrite    <= '0;
-      ppif.EX_PCSrc       <= '0;
-      ppif.EX_rdat1       <= '0;
-      ppif.EX_rdat2       <= '0;
-      ppif.EX_ALUOP       <= ALU_SLL;
-      ppif.EX_Mem2Reg     <= '0;
-      ppif.EX_JAL         <= '0;
-      ppif.EX_dWEN        <= '0;
-      ppif.EX_dREN        <= '0;
-      ppif.EX_halt        <= '0;
-      ppif.EX_Jump2Reg    <= '0;
-      ppif.EX_BNE         <= '0;
-      ppif.EX_ALUSrc      <= '0;
-      ppif.EX_Jump        <= '0;
-      ppif.EX_LUI2Reg     <= '0;
-      ppif.EX_signExt     <= '0;
-      ppif.EX_zero        <= '0;
-      ppif.EX_ALUOut      <= '0;
-    end    
-
-
-    // MEM/WB
-    if(ppif.MEM_EN && !ppif.MEM_FLUSH) 
-    begin:MEMWB_REGISTER_EN
-    
-      ppif.MEM_instr       <= ppif.EX_instr;
-      ppif.MEM_pc4         <= ppif.EX_pc4;
-      ppif.MEM_RegDst      <= ppif.EX_RegDst;
-      ppif.MEM_RegWrite    <= ppif.EX_RegWrite;
-      ppif.MEM_rdat1       <= ppif.EX_rdat1;
-      ppif.MEM_rdat2       <= ppif.EX_rdat2;
-      ppif.MEM_ALUOP       <= ppif.EX_ALUOP;
-      ppif.MEM_Mem2Reg     <= ppif.EX_Mem2Reg;
-      ppif.MEM_JAL         <= ppif.EX_JAL;
-      ppif.MEM_dWEN        <= ppif.EX_dWEN;
-      ppif.MEM_dREN        <= ppif.EX_dREN;
-      ppif.MEM_halt        <= ppif.EX_halt;
-      ppif.MEM_Jump2Reg    <= ppif.EX_Jump2Reg;
-      ppif.MEM_BNE         <= ppif.EX_BNE;
-      ppif.MEM_ALUSrc      <= ppif.EX_ALUSrc;
-      ppif.MEM_PCSrc       <= ppif.EX_PCSrc;
-      ppif.MEM_Jump        <= ppif.EX_Jump;
-      ppif.MEM_LUI2Reg     <= ppif.EX_LUI2Reg;
-      ppif.MEM_signExt     <= ppif.EX_signExt;
-
-      ppif.MEM_ALUOut      <= ppif.EX_ALUOut;
-      ppif.MEM_dmemload    <= ppif.MEM_dmemload_in;
-  
-    end
-    else if(ppif.MEM_EN && ppif.MEM_FLUSH) 
-    begin:MEM_WB_REGISTER_FLUSH
-      ppif.MEM_instr       <= '0;
-      ppif.MEM_pc4         <= '0;
-      ppif.MEM_RegDst      <= '0;
-      ppif.MEM_RegWrite    <= '0;
-      ppif.MEM_PCSrc       <= '0;
-      ppif.MEM_rdat1       <= '0;
-      ppif.MEM_rdat2       <= '0;
-      ppif.MEM_ALUOP       <= ALU_SLL;
-      ppif.MEM_Mem2Reg     <= '0;
-      ppif.MEM_JAL         <= '0;
-      ppif.MEM_dWEN        <= '0;
-      ppif.MEM_dREN        <= '0;
-      ppif.MEM_halt        <= '0;
-      ppif.MEM_Jump2Reg    <= '0;
-      ppif.MEM_BNE         <= '0;
-      ppif.MEM_ALUSrc      <= '0;
-      ppif.MEM_Jump        <= '0;
-      ppif.MEM_LUI2Reg     <= '0;
-      ppif.MEM_signExt     <= '0;
-
-      ppif.MEM_dmemload    <= '0;
-      ppif.MEM_ALUOut      <= '0;
-    end    
+  else begin
+    //IF
+    prif.IF_instr <= nxt_IF_instr;
+    prif.IF_pc4 <= nxt_IF_pc4;
+    //ID
+    prif.ID_pc4 <= nxt_ID_pc4;
+    prif.ID_RegDst <= nxt_ID_RegDst;
+    prif.ID_RegWrite <= nxt_ID_RegWrite;
+    prif.ID_MemtoReg <= nxt_ID_MemtoReg;
+    prif.ID_dread <= nxt_ID_dread;
+    prif.ID_dwrite <= nxt_ID_dwrite;
+    prif.ID_BEQ <= nxt_ID_BEQ;
+    prif.ID_BNE <= nxt_ID_BNE;
+    prif.ID_JumpReg <= nxt_ID_JumpReg;
+    prif.ID_ExtOP <= nxt_ID_ExtOP;
+    prif.ID_ALUSrc <= nxt_ID_ALUSrc;
+    prif.ID_LUI <= nxt_ID_LUI;
+    prif.ID_ALUCtr <= nxt_ID_ALUCtr;
+    prif.ID_rdat1 <= nxt_ID_rdat1;
+    prif.ID_rdat2 <= nxt_ID_rdat2;
+    prif.ID_rs <= nxt_ID_rs;
+    prif.ID_rt <= nxt_ID_rt;
+    prif.ID_rd <= nxt_ID_rd;
+    prif.ID_imm16 <= nxt_ID_imm16;
+    prif.ID_halt <= nxt_ID_halt;
+    prif.ID_JR <= nxt_ID_JR;
+    //EX
+    prif.EX_pc4 <= nxt_EX_pc4;
+    prif.EX_JumpReg <= nxt_EX_JumpReg;
+    prif.EX_BEQ <= nxt_EX_BEQ;
+    prif.EX_BNE <= nxt_EX_BNE;
+    prif.EX_MemtoReg <= nxt_EX_MemtoReg;
+    prif.EX_RegWrite <= nxt_EX_RegWrite;
+    prif.EX_dread <= nxt_EX_dread;
+    prif.EX_dwrite <= nxt_EX_dwrite;
+    prif.EX_zero <= nxt_EX_zero;
+    prif.EX_portout <= nxt_EX_portout;
+    prif.EX_ext_imm_16 <= nxt_EX_ext_imm_16;
+    prif.EX_wsel <= nxt_EX_wsel;
+    prif.EX_halt <= nxt_EX_halt;
+    prif.EX_dmemstore <= nxt_EX_dmemstore;
+    //MEM
+    prif.MEM_pc4 <= nxt_MEM_pc4;
+    prif.MEM_JumpReg <= nxt_MEM_JumpReg;
+    prif.MEM_MemtoReg <= nxt_MEM_MemtoReg;
+    prif.MEM_RegWrite <= nxt_MEM_RegWrite;
+    prif.MEM_dmemload <= nxt_MEM_dmemload;
+    prif.MEM_portout <= nxt_MEM_portout;
+    prif.MEM_wsel <= nxt_MEM_wsel;
+    prif.MEM_halt <= nxt_MEM_halt;
   end
 end
 
-
+always_comb begin : NXT_LOGIC
+  //IF
+  nxt_IF_instr = prif.IF_instr;
+  nxt_IF_pc4 = prif.IF_pc4;
+  //ID
+  nxt_ID_pc4 = prif.ID_pc4;
+  nxt_ID_RegDst = prif.ID_RegDst;
+  nxt_ID_RegWrite = prif.ID_RegWrite;
+  nxt_ID_MemtoReg = prif.ID_MemtoReg;
+  nxt_ID_dread = prif.ID_dread;
+  nxt_ID_dwrite = prif.ID_dwrite;
+  nxt_ID_BEQ = prif.ID_BEQ;
+  nxt_ID_BNE = prif.ID_BNE;
+  nxt_ID_JumpReg = prif.ID_JumpReg;
+  nxt_ID_ExtOP = prif.ID_ExtOP;
+  nxt_ID_ALUSrc = prif.ID_ALUSrc;
+  nxt_ID_LUI = prif.ID_LUI;
+  nxt_ID_ALUCtr = prif.ID_ALUCtr;
+  nxt_ID_rdat1 = prif.ID_rdat1;
+  nxt_ID_rdat2 = prif.ID_rdat2;
+  nxt_ID_rs = prif.ID_rs;
+  nxt_ID_rt = prif.ID_rt;
+  nxt_ID_rd = prif.ID_rd;
+  nxt_ID_imm16 = prif.ID_imm16;
+  nxt_ID_halt = prif.ID_halt;
+  nxt_ID_JR = prif.ID_JR;
+  //EX
+  nxt_EX_pc4 = prif.EX_pc4;
+  nxt_EX_JumpReg = prif.EX_JumpReg;
+  nxt_EX_BEQ = prif.EX_BEQ;
+  nxt_EX_BNE = prif.EX_BNE;
+  nxt_EX_MemtoReg = prif.EX_MemtoReg;
+  nxt_EX_RegWrite = prif.EX_RegWrite;
+  nxt_EX_dread = prif.EX_dread;
+  nxt_EX_dwrite = prif.EX_dwrite;
+  nxt_EX_zero = prif.EX_zero;
+  nxt_EX_portout = prif.EX_portout;
+  nxt_EX_ext_imm_16 = prif.EX_ext_imm_16;
+  nxt_EX_wsel = prif.EX_wsel;
+  nxt_EX_halt = prif.EX_halt;
+  nxt_EX_dmemstore = prif.EX_dmemstore;
+  //MEM
+  nxt_MEM_pc4 = prif.MEM_pc4;
+  nxt_MEM_JumpReg = prif.MEM_JumpReg;
+  nxt_MEM_MemtoReg = prif.MEM_MemtoReg;
+  nxt_MEM_RegWrite = prif.MEM_RegWrite;
+  nxt_MEM_dmemload = prif.MEM_dmemload;
+  nxt_MEM_portout = prif.MEM_portout;
+  nxt_MEM_wsel = prif.MEM_wsel;
+  nxt_MEM_halt = prif.MEM_halt;
+  //IF
+  if(prif.IF_FLUSH) begin
+    nxt_IF_instr = '0;
+    nxt_IF_pc4 = '0;
+  end
+  else if(prif.IF_EN) begin
+    nxt_IF_instr = prif.IF_instr_in;
+    nxt_IF_pc4 = prif.IF_pc4_in;
+  end
+  //ID
+  if(prif.ID_FLUSH) begin
+    if(prif.halt)
+      nxt_ID_halt = prif.ID_halt_in;
+    else
+      nxt_ID_halt = '0;
+    nxt_ID_pc4 = '0;
+    nxt_ID_RegDst = '0;
+    nxt_ID_RegWrite = '0;
+    nxt_ID_MemtoReg = '0;
+    nxt_ID_dread = '0;
+    nxt_ID_dwrite = '0;
+    nxt_ID_BEQ = '0;
+    nxt_ID_BNE = '0;
+    nxt_ID_JumpReg = '0;
+    nxt_ID_ExtOP = '0;
+    nxt_ID_ALUSrc = '0;
+    nxt_ID_LUI = '0;
+    nxt_ID_ALUCtr = ALU_SLL;
+    nxt_ID_rdat1 = '0;
+    nxt_ID_rdat2 = '0;
+    nxt_ID_rs = '0;
+    nxt_ID_rt = '0;
+    nxt_ID_rd = '0;
+    nxt_ID_imm16 = '0;
+    //nxt_ID_halt = '0;
+    nxt_ID_JR = '0;
+  end
+  else if(prif.ID_EN) begin
+    nxt_ID_pc4 = prif.ID_pc4_in;
+    nxt_ID_RegDst = prif.ID_RegDst_in;
+    nxt_ID_RegWrite = prif.ID_RegWrite_in;
+    nxt_ID_MemtoReg = prif.ID_MemtoReg_in;
+    nxt_ID_dread = prif.ID_dread_in;
+    nxt_ID_dwrite = prif.ID_dwrite_in;
+    nxt_ID_BEQ = prif.ID_BEQ_in;
+    nxt_ID_BNE = prif.ID_BNE_in;
+    nxt_ID_JumpReg = prif.ID_JumpReg_in;
+    nxt_ID_ExtOP = prif.ID_ExtOP_in;
+    nxt_ID_ALUSrc = prif.ID_ALUSrc_in;
+    nxt_ID_LUI = prif.ID_LUI_in;
+    nxt_ID_ALUCtr = prif.ID_ALUCtr_in;
+    nxt_ID_rdat1 = prif.ID_rdat1_in;
+    nxt_ID_rdat2 = prif.ID_rdat2_in;
+    nxt_ID_rs = prif.ID_rs_in;
+    nxt_ID_rt = prif.ID_rt_in;
+    nxt_ID_rd = prif.ID_rd_in;
+    nxt_ID_imm16 = prif.ID_imm16_in;
+    nxt_ID_halt = prif.ID_halt_in;
+    nxt_ID_JR = prif.ID_JR_in;
+  end
+  //EX
+  if(prif.EX_FLUSH) begin
+    if(prif.halt)
+      nxt_EX_halt = prif.EX_halt_in;
+    else
+      nxt_EX_halt = '0;
+    nxt_EX_pc4 = '0;
+    nxt_EX_JumpReg = '0;
+    nxt_EX_BEQ = '0;
+    nxt_EX_BNE = '0;
+    nxt_EX_MemtoReg = '0;
+    nxt_EX_RegWrite = '0;
+    nxt_EX_dread = '0;
+    nxt_EX_dwrite = '0;
+    nxt_EX_zero = '0;
+    nxt_EX_portout = '0;
+    nxt_EX_ext_imm_16 = '0;
+    nxt_EX_wsel = '0;
+    //nxt_EX_halt = '0;
+    nxt_EX_dmemstore = '0;
+  end
+  else if(prif.EX_EN) begin
+    nxt_EX_pc4 = prif.EX_pc4_in;
+    nxt_EX_JumpReg = prif.EX_JumpReg_in;
+    nxt_EX_BEQ = prif.EX_BEQ_in;
+    nxt_EX_BNE = prif.EX_BNE_in;
+    nxt_EX_MemtoReg = prif.EX_MemtoReg_in;
+    nxt_EX_RegWrite = prif.EX_RegWrite_in;
+    nxt_EX_dread = prif.EX_dread_in;
+    nxt_EX_dwrite = prif.EX_dwrite_in;
+    nxt_EX_zero = prif.EX_zero_in;
+    nxt_EX_portout = prif.EX_portout_in;
+    nxt_EX_ext_imm_16 = prif.EX_ext_imm_16_in;
+    nxt_EX_wsel = prif.EX_wsel_in;
+    nxt_EX_halt = prif.EX_halt_in;
+    nxt_EX_dmemstore = prif.EX_dmemstore_in;
+  end
+  //MEM
+  if(prif.MEM_FLUSH) begin
+    if(prif.halt)
+      nxt_MEM_halt = prif.MEM_halt_in;
+    else
+      nxt_MEM_halt = '0;
+    nxt_MEM_pc4 = '0;
+    nxt_MEM_JumpReg = '0;
+    nxt_MEM_MemtoReg = '0;
+    nxt_MEM_RegWrite = '0;
+    nxt_MEM_dmemload = '0;
+    nxt_MEM_portout = '0;
+    nxt_MEM_wsel = '0;
+    nxt_MEM_halt = '0;
+  end
+  else if(prif.MEM_EN) begin
+    nxt_MEM_pc4 = prif.MEM_pc4_in;
+    nxt_MEM_JumpReg = prif.MEM_JumpReg_in;
+    nxt_MEM_MemtoReg = prif.MEM_MemtoReg_in;
+    nxt_MEM_RegWrite = prif.MEM_RegWrite_in;
+    nxt_MEM_dmemload = prif.MEM_dmemload_in;
+    nxt_MEM_portout = prif.MEM_portout_in;
+    nxt_MEM_wsel = prif.MEM_wsel_in;
+    nxt_MEM_halt = prif.MEM_halt_in;
+  end
+end
 
 
 

@@ -9,15 +9,15 @@ module program_counter(
 import cpu_types_pkg::*;
 
 word_t nxt_pcaddr;
-word_t temp1;
-word_t temp2;
+//word_t temp1;
+//word_t temp2;
 
 always_ff @(posedge CLK, negedge nRST) begin : PROGRAM_COUNTER
     if(!nRST) begin
         pcif.pcaddr <= '0;
     end
     else begin
-        if(pcif.ihit)
+        if(pcif.PC_EN)
             pcif.pcaddr <= nxt_pcaddr;
         else
             pcif.pcaddr <= pcif.pcaddr;
@@ -26,17 +26,14 @@ end
 
 always_comb begin : NXT_PCADDR
     pcif.nxt_pc = pcif.pcaddr + 4;
-    if(pcif.Branch)
-        temp1 = pcif.pcaddr + {pcif.bimm[29:0], 2'b0} + 4;
-    else
-        temp1 = pcif.nxt_pc;
-    if(pcif.Jump)
-        temp2 = {pcif.pcaddr[31:28], pcif.jimm, 2'b0}; // check
-    else
-        temp2 = temp1;
-    if(pcif.JR)
+    nxt_pcaddr = pcif.nxt_pc;
+    if(pcif.PCSrc) //Branch has the first priority
+        nxt_pcaddr = pcif.branch_pc + {pcif.bimm[29:0], 2'b0};
+    else if(pcif.JR) begin // JR has second priority
         nxt_pcaddr = pcif.jraddr;
-    else
-        nxt_pcaddr = temp2;
+    end
+    else if(pcif.Jump) begin // Jump and JAL has third priority
+        nxt_pcaddr = {pcif.pcaddr[31:28], pcif.jimm, 2'b0};
+    end
 end
 endmodule

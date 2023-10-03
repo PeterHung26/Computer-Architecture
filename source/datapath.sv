@@ -1,16 +1,25 @@
+/*
+  Eric Villasenor
+  evillase@gmail.com
+
+  datapath contains register file, control, hazard,
+  muxes, and glue logic for processor
+*/
+
 // data path interface
 `include "datapath_cache_if.vh"
-`include "register_file_if.vh"
-`include "request_unit_if.vh"
-`include "control_unit_if.vh"
-`include "alu_if.vh"
-`include "pipeline_register_if.vh"
-// synthesize -f 200 -t -d -m system_fpga
-// testasm -s test.loadstore.asm test.rtype.asm test.halt.asm test.jump.asm test.branch.asm
+
 // alu op, mips op, and instruction type
 `include "cpu_types_pkg.vh"
-
-
+`include "alu_if.vh"
+`include "register_file_if.vh"
+`include "control_unit_if.vh"
+//`include "request_unit_if.vh"
+`include "program_counter_if.vh"
+`include "extender_if.vh"
+`include "pipeline_register_if.vh"
+`include "hazard_unit_if.vh"
+`include "forwarding_unit_if.vh"
 
 module datapath (
   input logic CLK, nRST,
@@ -22,279 +31,265 @@ module datapath (
   // pc init
   parameter PC_INIT = 0;
 
-  // INSTRUCTION DECODE
-  logic [OP_W-1:0] IF_opc;
-  logic [REG_W-1:0] IF_rt, IF_rs;
+  // Interface
+  alu_if aluif();
+  register_file_if rfif();
+  control_unit_if cuif();
+  //request_unit_if ruif();
+  program_counter_if pcif();
+  extender_if exif();
+  pipeline_register_if prif();
+  hazard_unit_if huif();
+  forwarding_unit_if fuif();
+  // DUT
+  alu ALU (CLK, aluif);
+  register_file RF (CLK, nRST, rfif);
+  control_unit CU (CLK, nRST, cuif);
+  //request_unit RU (CLK, nRST, ruif);
+  program_counter PC (CLK, nRST, pcif);
+  extender EX (CLK, exif);
+  pipeline_register PR (CLK, nRST, prif);
+  hazard_unit HU (CLK, nRST, huif);
+  forwarding_unit FU (CLK, fuif);
+  // Signal connected
+  logic PCSrc;
+  word_t douta;
+  word_t doutb;
+  word_t dout1;
+  word_t dout2;
+  word_t forwa;
+  word_t forwb;
+
+  //Hazard unit
+  assign huif.dhit = dpif.dhit;
+  assign huif.ihit = dpif.ihit;
+  assign huif.cu_halt = cuif.halt;
+  assign huif.cu_Jump = cuif.Jump;
+  assign huif.ID_JR = prif.ID_JR;
+  assign huif.ID_dread = prif.ID_dread;
+  assign huif.PCSrc = PCSrc;
+  assign huif.ID_rt = prif.ID_rt;
+  assign huif.IF_rs = prif.IF_instr[25:21]; // rs 
+  assign huif.IF_rt = prif.IF_instr[20:16]; // rt
+  assign prif.IF_EN = huif.IF_EN;
+  assign prif.ID_EN = huif.ID_EN;
+  assign prif.EX_EN = huif.EX_EN;
+  assign prif.MEM_EN = huif.MEM_EN;
+  assign prif.IF_FLUSH = huif.IF_FLUSH;
+  assign prif.ID_FLUSH = huif.ID_FLUSH;
+  assign prif.EX_FLUSH = huif.EX_FLUSH;
+  assign prif.MEM_FLUSH = huif.MEM_FLUSH;
+  assign prif.halt = huif.pr_halt;
+  assign pcif.PC_EN = huif.PC_EN;
+  assign dpif.imemREN = huif.iREN;
+
+  //Forwarding Unit
+  assign fuif.ID_rs = prif.ID_rs;
+  assign fuif.ID_rt = prif.ID_rt;
+  assign fuif.EX_RegWrite = prif.EX_RegWrite;
+  assign fuif.MEM_RegWrite = prif.MEM_RegWrite;
+  assign fuif.EX_wsel = prif.EX_wsel;
+  assign fuif.MEM_wsel = prif.MEM_wsel;
+
+  // IF stage
+  //Program Counter
+  always_comb begin : BRANCH
+    PCSrc = 1'b0;
+    if(prif.EX_BEQ & prif.EX_zero)
+      PCSrc = 1'b1;
+    else if(prif.EX_BNE & (!prif.EX_zero))
+      PCSrc = 1'b1;
+  end
+  assign pcif.PCSrc = PCSrc;
+  assign pcif.Jump = cuif.Jump;
+  assign pcif.JR = prif.ID_JR;
+  assign pcif.bimm = prif.EX_ext_imm_16;
+  assign pcif.jimm = prif.IF_instr[25:0];
+  assign pcif.jraddr = forwa;
+  assign pcif.branch_pc = prif.EX_pc4;
+  assign dpif.imemaddr = pcif.pcaddr;
+  //PipeLine Register
+  assign prif.IF_pc4_in = pcif.nxt_pc;
+  assign prif.IF_instr_in = dpif.imemload;
+
+  // ID stage
+  //Register File
+  assign rfif.rsel1 = prif.IF_instr[25:21]; // rs 
+  assign rfif.rsel2 = prif.IF_instr[20:16]; // rt
   
-  logic [OP_W-1:0] ID_opc;
-  logic [REG_W-1:0] ID_rs, ID_rt, ID_rd;
-  logic [REG_W-1:0] EX_rs, EX_rt, EX_rd;
-  logic [REG_W-1:0] exmem_rd, memwb_rd;
-  logic [REG_W-1:0] MEM_rs, MEM_rt, MEM_rd;
-  logic [FUNC_W-1:0] ID_func;
-  logic [IMM_W-1:0] ID_imm, EX_imm, MEM_imm;
-  logic [ADDR_W-1:0] ID_addr;
-  logic [SHAM_W-1:0] ID_shamt;
-  logic porta_hz, portb_hz;
-  word_t pc, pcn, pc4;
-  word_t ID_imm_LUI, MEM_imm_LUI,EX_imm_LUI, ID_imm_EXT, EX_imm_EXT;
-  word_t MEM_WriteData;
-  word_t ALU_Endpoint;
+  // Control Unit
+  assign cuif.opcode = opcode_t'(prif.IF_instr[31:26]);
+  assign cuif.funct = funct_t'(prif.IF_instr[5:0]);
+  assign cuif.shamt = prif.IF_instr[10:6];
 
-  // interface
-  register_file_if     rfif();
-  alu_if               aluif();
-  control_unit_if      cuif();
-  pipeline_register_if ppif();
-  hazard_unit_if       huif();
+  //Pipeline Register
+  assign prif.ID_pc4_in = prif.IF_pc4;
+  assign prif.ID_JR_in = cuif.JR;
+  assign prif.ID_halt_in = cuif.halt;
+  assign prif.ID_JumpReg_in = cuif.JumpReg;
+  assign prif.ID_BEQ_in = cuif.BEQ;
+  assign prif.ID_BNE_in = cuif.BNE;
+  assign prif.ID_MemtoReg_in = cuif.MemtoReg;
+  assign prif.ID_RegDst_in = cuif.RegDst;
+  assign prif.ID_RegWrite_in = cuif.RegWr;
+  assign prif.ID_dread_in = cuif.dread;
+  assign prif.ID_dwrite_in = cuif.dwrite;
+  assign prif.ID_ExtOP_in = cuif.ExtOp;
+  assign prif.ID_ALUSrc_in = cuif.ALUSrc;
+  assign prif.ID_LUI_in = cuif.LUI;
+  assign prif.ID_ALUCtr_in = cuif.ALUCtr;
+  assign prif.ID_rdat1_in = rfif.rdat1;
+  assign prif.ID_rdat2_in = rfif.rdat2;
+  assign prif.ID_rs_in = prif.IF_instr[25:21]; // rs 
+  assign prif.ID_rt_in = prif.IF_instr[20:16]; // rt
+  assign prif.ID_rd_in = prif.IF_instr[15:11]; // rt
+  assign prif.ID_imm16_in = prif.IF_instr[15:0]; // imm16
 
-  // connection
-  alu               alu(aluif); // comb
-  control_unit      cu(cuif);   // comb
-  register_file     rf(CLK,nRST, rfif);
-  pipeline_register pp(CLK, nRST, ppif);
-  hazard_unit    hu(huif);
+  /*always_comb begin : RF_MUX
+    if(cuif.RegDst == 2'd0)
+      rfif.wsel = dpif.imemload[20:16]; // rt
+    else if(cuif.RegDst == 2'd1)
+      rfif.wsel = dpif.imemload[15:11]; // rd
+    else if(cuif.RegDst == 2'd2)
+      rfif.wsel = 5'd31; // return address register
+    else
+      rfif.wsel = dpif.imemload[20:16];
+    if(cuif.MemtoReg)
+      dout = dpif.dmemload;
+    else
+      dout = aluif.portout;
 
+    if(cuif.LDsel == 2'd0)
+      dout1 = dout;
+    else if(cuif.LDsel == 2'd1)
+      dout1 = {24'b0, dout[7:0]};
+    else if(cuif.LDsel == 2'd2)
+      dout1 = {16'b0, dout[15:0]};
+    else
+      dout1 = dout;
 
-  always_ff @(posedge CLK, negedge nRST) begin: PC_FF
-    if(!nRST)
-      pc <= PC_INIT;
-    else if(dpif.ihit)
-      pc <= pcn;
-    else  
-      pc <= pc;
+    if(cuif.JumpReg)
+      rfif.wdat = pcif.nxt_pc;
+    else
+      rfif.wdat = dout1;
+    if((dpif.ihit == 1) || (dpif.dhit == 1))
+      rfif.WEN = cuif.RegWr;
+    else
+      rfif.WEN = 1'b0;
+
+  end*/
+  // EX Stage
+
+  //Pipeline Register
+  assign prif.EX_pc4_in = prif.ID_pc4;
+  assign prif.EX_halt_in = prif.ID_halt;
+  assign prif.EX_JumpReg_in = prif.ID_JumpReg;
+  assign prif.EX_BEQ_in = prif.ID_BEQ;
+  assign prif.EX_BNE_in = prif.ID_BNE;
+  assign prif.EX_MemtoReg_in = prif.ID_MemtoReg;
+  assign prif.EX_RegWrite_in = prif.ID_RegWrite;
+  assign prif.EX_dread_in = prif.ID_dread;
+  assign prif.EX_dwrite_in = prif.ID_dwrite;
+  assign prif.EX_zero_in = aluif.zero;
+  assign prif.EX_portout_in = aluif.portout;
+  assign prif.EX_ext_imm_16_in = exif.ext_imm;
+  assign prif.EX_dmemstore_in = forwb;
+  always_comb begin : WSEL
+    if(prif.ID_RegDst == 2'd0)
+      prif.EX_wsel_in = prif.ID_rt; // rt
+    else if(prif.ID_RegDst == 2'd1)
+      prif.EX_wsel_in = prif.ID_rd; // rd
+    else if(prif.ID_RegDst == 2'd2)
+      prif.EX_wsel_in = 5'd31; // return address register
+    else
+      prif.EX_wsel_in = prif.ID_rt;
   end
 
-  always_comb begin: PC_COMB
-    pc4 = pc+4;
-    pcn = pc+4;
+  // Extender
+  assign exif.ExtOp = prif.ID_ExtOP;
+  assign exif.imm = prif.ID_imm16;
 
-    ppif.IF_EN = (dpif.ihit | dpif.dhit);
-    ppif.ID_EN = (dpif.ihit | dpif.dhit);
-    ppif.EX_EN = (dpif.ihit | dpif.dhit);
-    ppif.MEM_EN = (dpif.ihit | dpif.dhit);
-    ppif.IF_FLUSH = 0;
-    ppif.ID_FLUSH = 0;
-    ppif.EX_FLUSH = 0;
-    ppif.MEM_FLUSH = 0;
-
-    if(huif.StallLW)
-    begin 
-      pcn = pc;
-      ppif.IF_EN = 0;
-    end
-    else if(ppif.EX_Jump2Reg)
-    begin
-      pcn = ppif.EX_rdat1; // = aluif.a
-      ppif.IF_FLUSH = 1;
-      ppif.ID_FLUSH = 1;
-      ppif.EX_FLUSH = 1;
-    end
-    else if(ppif.EX_Jump)
-    begin
-      pcn = {ppif.EX_pc4[31:28], ppif.EX_instr[25:0], 2'b00};
-      ppif.IF_FLUSH = 1;
-      ppif.ID_FLUSH = 1;
-      ppif.EX_FLUSH = 1;
-    end
-    else if(ppif.EX_PCSrc && !ppif.EX_BNE && ppif.EX_zero)
-    begin
-      pcn = ppif.EX_pc4 + (EX_imm_EXT << 2);
-      
-      ppif.IF_FLUSH = 1;
-      ppif.ID_FLUSH = 1;
-      ppif.EX_FLUSH = 1;
-    end
-    else if(ppif.EX_PCSrc && ppif.EX_BNE && !ppif.EX_zero)
-    begin
-      pcn = ppif.EX_pc4 + (EX_imm_EXT << 2);
-
-      ppif.IF_FLUSH = 1;
-      ppif.ID_FLUSH = 1;
-      ppif.EX_FLUSH = 1;
-    end
-    
+  // ALU
+  assign aluif.aluop = prif.ID_ALUCtr;
+  assign aluif.porta = douta;
+  assign aluif.portb = doutb;
+  always_comb begin : ALU_MUX
+    if(fuif.forwarda == 2'd0)
+      forwa = prif.ID_rdat1;
+    else if(fuif.forwarda == 2'd1)
+      forwa = prif.EX_portout;
+    else if(fuif.forwarda == 2'd2)
+      forwa = dout1;
+    else
+      forwa = prif.ID_rdat1;
+    if(fuif.forwardb == 2'd0)
+      forwb = prif.ID_rdat2;
+    else if(fuif.forwardb == 2'd1)
+      forwb = prif.EX_portout;
+    else if(fuif.forwardb == 2'd2)
+      forwb = dout1;
+    else
+      forwb = prif.ID_rdat2;
+    if(prif.ID_LUI)
+      douta = 32'd16;
+    else
+      douta = forwa;
+    if(prif.ID_ALUSrc)
+      doutb = exif.ext_imm;
+    else
+      doutb = forwb;
   end
 
-/*
-  assign opc     = dpif.imemload[31:26];
-  assign rs      = dpif.imemload[25:21];
-  assign rt      = dpif.imemload[20:16];
-  assign rd      = dpif.imemload[15:11];
-  assign shamt   = dpif.imemload[10:6];
-  assign func    = dpif.imemload[5:0];
-  assign imm     = dpif.imemload[15:0];
-  assign addr    = dpif.imemload[25:0];
- */ 
-  assign IF_opc     = ppif.IF_instr[31:26];
-  assign IF_rs      = ppif.IF_instr[25:21];
-  assign IF_rt      = ppif.IF_instr[20:16];
   
-  assign ID_opc     = ppif.ID_instr[31:26];
-  assign ID_rs      = ppif.ID_instr[25:21];
-  assign ID_rt      = ppif.ID_instr[20:16];
-  assign ID_rd      = ppif.ID_instr[15:11];
-  assign ID_shamt   = ppif.ID_instr[10:6];
-  assign ID_func    = ppif.ID_instr[5:0];
-  assign ID_addr    = ppif.ID_instr[25:0];
-  assign ID_imm     = ppif.ID_instr[15:0];
-  assign ID_imm_EXT = (ID_imm[15] & ppif.ID_signExt ) ? {16'hFFFF, ID_imm} : {16'h0000, ID_imm};
-  assign ID_imm_LUI = {ppif.ID_instr[15:0],16'h0000};
-  
-  assign EX_rs      = ppif.EX_instr[25:21];
-  assign EX_rt      = ppif.EX_instr[20:16];
-  assign EX_rd      = ppif.EX_instr[15:11];
-  assign EX_imm     = ppif.EX_instr[15:0];
-  assign EX_imm_EXT = (EX_imm[15] & ppif.EX_signExt ) ? {16'hFFFF, EX_imm} : {16'h0000, EX_imm};
-  assign EX_imm_LUI = {ppif.EX_instr[15:0],16'h0000};
+  //assign cuif.flushed = dpif.flushed;
 
-  assign MEM_rs      = ppif.MEM_instr[25:21];
-  assign MEM_rt      = ppif.MEM_instr[20:16];
-  assign MEM_rd      = ppif.MEM_instr[15:11];
-  assign MEM_imm     = ppif.MEM_instr[15:0];
-  assign MEM_imm_LUI = {ppif.MEM_instr[15:0],16'h0000};
-  
+  // Request Unit
+  /*assign ruif.dhit = dpif.dhit;
+  assign ruif.ihit = dpif.ihit;
+  assign ruif.dread = cuif.dread;
+  assign ruif.dwrite = cuif.dwrite;
+  assign ruif.iread = cuif.iread;*/
 
+  // MEM Stage
 
-  
+  //Pipeline Register
+  assign prif.MEM_pc4_in = prif.EX_pc4;
+  assign prif.MEM_halt_in = prif.EX_halt;
+  assign prif.MEM_JumpReg_in = prif.EX_JumpReg;
+  assign prif.MEM_MemtoReg_in = prif.EX_MemtoReg;
+  assign prif.MEM_RegWrite_in = prif.EX_RegWrite;
+  assign prif.MEM_dmemload_in = dpif.dmemload;
+  assign prif.MEM_portout_in = prif.EX_portout;
+  assign prif.MEM_wsel_in = prif.EX_wsel;
 
+  //Data memory
+  assign dpif.dmemaddr = prif.EX_portout;
+  assign dpif.dmemREN = prif.EX_dread;
+  assign dpif.dmemWEN = prif.EX_dwrite;
+  assign dpif.dmemstore = prif.EX_dmemstore;
 
-  // IF/ID
-  assign ppif.IF_instr_in      = (dpif.ihit) ? dpif.imemload : 0 ;
-  assign ppif.IF_pc4_in        = pc4;
-
-  // CONTORL_UNIT     >>  OK
-  assign cuif.inst          = ppif.IF_instr;
-
-  // REGISTER FILE
-  assign rfif.rsel1       = ppif.IF_instr[25:21];
-  assign rfif.rsel2       = ppif.IF_instr[20:16];
-  assign rfif.WEN         = ppif.MEM_RegWrite & (dpif.ihit | dpif.dhit);     //?
-  assign rfif.wsel        = (ppif.MEM_LUI2Reg)  ? MEM_rt : 
-                            (ppif.MEM_JAL)   ? 5'd31 : 
-                            (ppif.MEM_RegDst)   ? MEM_rd : MEM_rt;
-  assign rfif.wdat        = MEM_WriteData;
-  
-
-  // ID/EX
-  assign ppif.RegDst_in     = (huif.StallLW) ? '0 : cuif.RegDst;
-  assign ppif.RegWrite_in   = (huif.StallLW) ? '0 : cuif.RegWrite;
-  assign ppif.ALUOP_in      = (huif.StallLW) ? ALU_SLL : cuif.aluop;
-  assign ppif.Mem2Reg_in    = (huif.StallLW) ? '0 : cuif.Mem2Reg;
-  assign ppif.JAL_in        = (huif.StallLW) ? '0 : cuif.JAL;
-  assign ppif.LUI2Reg_in    = (huif.StallLW) ? '0 : cuif.LUI2Reg;
-  assign ppif.dWEN_in       = (huif.StallLW) ? '0 : cuif.dWEN;
-  assign ppif.dREN_in       = (huif.StallLW) ? '0 : cuif.dREN;
-  assign ppif.halt_in       = (huif.StallLW) ? '0 : cuif.halt;
-  assign ppif.Jump_in       = (huif.StallLW) ? '0 : cuif.Jump;
-  assign ppif.Jump2Reg_in   = (huif.StallLW) ? '0 : cuif.Jump2Reg;
-  assign ppif.BNE_in        = (huif.StallLW) ? '0 : cuif.BNE;
-  assign ppif.signExt_in    = (huif.StallLW) ? '0 : cuif.signExt;
-  assign ppif.ALUSrc_in     = (huif.StallLW) ? '0 : cuif.ALUSrc;
-  assign ppif.PCSrc_in      = (huif.StallLW) ? '0 : cuif.PCSrc;
-  assign ppif.rdat1_in      = (huif.StallLW) ? '0 : rfif.rdat1;
-  assign ppif.rdat2_in      = (huif.StallLW) ? '0 : 
-                              (huif.ForwardSW == 2'b11) ? dpif.dmemload :
-                              (huif.ForwardSW == 2'b01) ? ALU_Endpoint  :
-                              (huif.ForwardSW == 2'b10) ? ppif.EX_ALUOut : rfif.rdat2;
-                              // (huif.ForwardSW == 2'b10) ? ppif.EX_rdat2 : rfif.rdat2;
-
-
- 
-  //assign exmem_rd = (ppif.EX_RegDst) ? EX_rd : EX_rt;
-  //assign memwb_rd = (ppif.MEM_RegDst) ? MEM_rd ; MEM_rt;
-  
-  
-  // EX/MEM
-  // RS
-  assign aluif.a            = (huif.ForwardA == 2'b10) ? ppif.EX_ALUOut  :
-                              (huif.ForwardA == 2'b01) ? MEM_WriteData   : ppif.ID_rdat1;
-  // RT
-  assign aluif.b            = (ppif.ID_ALUSrc)         ? ID_imm_EXT      :  
-                              (huif.ForwardB == 2'b10) ? ppif.EX_ALUOut  : 
-                              (huif.ForwardB == 2'b01) ? MEM_WriteData   : ppif.ID_rdat2;
-                              
-
-                              
-  assign aluif.ops          = ppif.ID_ALUOP;   
-  assign ppif.EX_zero_in    = aluif.zero;
-  assign ALU_Endpoint       = (ppif.ID_LUI2Reg) ? ID_imm_LUI : aluif.out;
-  assign ppif.EX_ALUOut_in  = ALU_Endpoint;
-  
-  
-
-  // MEM/WB
-  
-  assign ppif.MEM_dmemload_in = dpif.dmemload;
-  assign MEM_WriteData        = (ppif.MEM_LUI2Reg)  ? MEM_imm_LUI :
-                                (ppif.MEM_JAL)      ? ppif.MEM_pc4 : 
-                                (ppif.MEM_Mem2Reg)  ? ppif.MEM_dmemload : ppif.MEM_ALUOut;
-
-
-  // HAZARD UNIT with FORWARDING
-  assign huif.IFID_rt         = IF_rt;
-  assign huif.IFID_rs         = IF_rs;
-  assign huif.IFID_opc        = IF_opc;
-  assign huif.IDEX_RegWrite   = ppif.ID_RegWrite;
-  assign huif.IDEX_rd         = (ppif.ID_RegDst) ? ID_rd : ID_rt;
-  assign huif.IDEX_rs         = ID_rs;
-  assign huif.IDEX_rt         = ID_rt;
-  assign huif.EXMEM_rd        = (ppif.EX_RegDst) ? EX_rd : EX_rt;
-  assign huif.EXMEM_RegWrite  = ppif.EX_RegWrite;
-  assign huif.MEMWB_rd        = (ppif.MEM_RegDst) ? MEM_rd : MEM_rt;
-  assign huif.MEMWB_RegWrite  = ppif.MEM_RegWrite;
-  assign huif.IDEX_dREN       = ppif.ID_dREN;
-  assign huif.EXMEM_dREN      = ppif.EX_dREN;
-  assign huif.MEMWB_dREN      = ppif.MEM_dREN;
-
-
-  assign huif.IDEX_dWEN       = ppif.ID_dWEN;
-  assign huif.EXMEM_dWEN      = ppif.EX_dWEN;
-  assign huif.MEMWB_dWEN      = ppif.MEM_dWEN;
-
-
-  
-
-  // ppif EN/FLUSH
-
-  always_comb begin: PIPELINE_REGS_EN_FULSH
-
+  // WB Stage
+  always_comb begin : WB_MUX
+    if(prif.MEM_MemtoReg)
+      dout1 = prif.MEM_dmemload;
+    else
+      dout1 = prif.MEM_portout;
+    if(prif.MEM_JumpReg)
+      dout2 = prif.MEM_pc4;
+    else
+      dout2 = dout1;
   end
+  // Register File Write
+  assign rfif.WEN = prif.MEM_RegWrite;
+  assign rfif.wsel = prif.MEM_wsel;
+  assign rfif.wdat = dout2;
 
-
-  assign dpif.imemREN     = ~dpif.halt;                                            //?
-  assign dpif.imemaddr    = pc;  
-  assign dpif.dmemREN     = ppif.EX_dREN;
-  assign dpif.dmemWEN     = ppif.EX_dWEN;
-  assign dpif.dmemaddr    = ppif.EX_ALUOut; 
-  assign dpif.dmemstore   = ppif.EX_rdat2; 
-
-
-  always_ff @(posedge CLK or negedge nRST) begin: HALT
-    if(~nRST) begin
-      dpif.halt <= 0;
-    end else begin
-      dpif.halt <= ppif.EX_halt;
-    end
-  end 
-
-
-
-
-
-
-
-
-
-////////////////////////////
-////////////////////////////
-///////////////OLD///////////
-/////////////////////////////
-
-
-
-
-
-
-
+  // Data path output
+  //assign dpif.datomic = ruif.datomic;
+  assign dpif.halt = prif.MEM_halt;
+  //assign dpif.imemREN = ruif.imemREN; // Update
+  //assign dpif.imemaddr = pcif.pcaddr;
+  //assign dpif.dmemREN = ruif.dmemREN;
+  //assign dpif.dmemWEN = ruif.dmemWEN;
+  //assign dpif.dmemaddr = aluif.portout;
 endmodule

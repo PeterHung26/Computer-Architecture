@@ -9,28 +9,29 @@ interface program_counter_if;
     import cpu_types_pkg::*;
 
     //control signal
-    logic Branch;
+    logic PCSrc;
     logic Jump;
     logic JR;
-    logic ihit;
+    logic PC_EN;
 
     // branch offset and jump location
     word_t   bimm; //Branch
     logic [ADDR_W-1:0]  jimm;
     word_t jraddr;
+    word_t branch_pc;
 
     // pc
     word_t nxt_pc;
     word_t pcaddr;
 
     modport pc(
-        input Branch, Jump, JR, ihit, bimm, jimm, jraddr,
+        input PCSrc, Jump, JR, PC_EN, bimm, jimm, jraddr, branch_pc, 
         output nxt_pc, pcaddr
     );
 
     modport tb(
         input nxt_pc, pcaddr,
-        output Branch, Jump, JR, ihit, bimm, jimm, jraddr
+        output PCSrc, Jump, JR, PC_EN, bimm, jimm, jraddr, branch_pc
     );
 endinterface
 `endif
