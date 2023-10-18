@@ -8,7 +8,7 @@ module dcache (
 );
 import cpu_types_pkg::*;
 
-/*
+
   assign dcif.flushed = dcif.halt;
   assign dcif.dhit = (dcif.dmemREN|dcif.dmemWEN) ? ~cif.dwait : 0;
   assign dcif.dmemload = cif.dload;
@@ -16,11 +16,11 @@ import cpu_types_pkg::*;
   assign cif.dWEN = dcif.dmemWEN;
   assign cif.dstore = dcif.dmemstore;
   assign cif.daddr = dcif.dmemaddr;
-*/
 
 
+/*
 typedef enum logic [3:0] {
-    IDLE, WB1, WB2, LD1, LD2, DIRTY, FLUSH1, FLUSH2, CNT,HALT
+    IDLE, WB1, WB2
 } s_t; 
 dcache_frame dframes[7:0][1:0];
 
@@ -121,7 +121,7 @@ end
  
 
 
-
+*/
 
 
 
