@@ -4,7 +4,7 @@
 module icache (
 	input logic CLK, nRST,
 	datapath_cache_if dcif,
-	caches_if.icache cif   
+	caches_if cif   
 );
 import cpu_types_pkg::*;
 icache_frame iframes[15:0];
@@ -36,6 +36,10 @@ always_comb begin: IHIT_LOGIC
     imiss           = '0; 
     dcif.ihit       = '0;
     dcif.imemload   = '0;
+    cif.iREN        = '0;
+    cif.iaddr       = '0;
+
+
     if(dcif.imemREN  && ~dcif.dmemREN && ~dcif.dmemWEN)  begin
         if(tag == iframes[idx].tag && iframes[idx].valid) 
         begin : IHIT
@@ -45,14 +49,14 @@ always_comb begin: IHIT_LOGIC
         else 
         begin : IMISS       
             imiss            = 1;
+            cif.iREN         =  dcif.imemREN;
+            cif.iaddr        =  dcif.imemaddr;
+            
             dcif.ihit        = ~cif.iwait;               
             dcif.imemload    = cif.iload;
         end
     end 
 end
-
-assign cif.iREN      = (imiss) ? dcif.imemREN     : '0;
-assign cif.iaddr     = (imiss) ? dcif.imemaddr    : '0;
 
 
 endmodule
