@@ -7,7 +7,7 @@ import cpu_types_pkg::*;
 
 module icache_tb;
   parameter PERIOD = 10;
-  logic CLK = 0, nRST;
+  logic CLK = 1, nRST;
   // clock
   always #(PERIOD/2) CLK++;
 
@@ -49,8 +49,6 @@ task reset_dut;
   begin
     nRST = 0;
     @(posedge CLK);
-    @(posedge CLK);
-    @(posedge CLK);
     nRST = 1;
     @(posedge CLK);
   end
@@ -70,30 +68,108 @@ cif.iwait = 1;
 cif.dwait = 1;
 cif.iload = 0;
 cif.dload = 0;
+tb_test_case = "Reset";
 reset_dut();
 
-@(posedge CLK);
-@(posedge CLK);
+
 
 tb_test_num ++;
-dcif.imemaddr = {26'd135 ,4'd1,2'b00};
+tb_test_case = "iREN, idx = 0, tag = 0, MISS ";
+cif.iwait = 1;
+dcif.imemaddr = {26'd0 ,4'd0,2'b00};
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
 cif.iwait = 0;
 cif.iload = 32'hAAAAAAAA;
 @(posedge CLK);
 cif.iwait = 1;
-dcif.imemaddr = {26'd135 ,4'd1,2'b00};
-cif.iload = 32'hBBBBBBBB;
+cif.iload = 32'h0;
+
+
+
+tb_test_num ++;
+tb_test_case = "iREN, idx = 1, tag = 136, MISS ";
+dcif.imemaddr = {26'd136 ,4'd1,2'b00};
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
 @(posedge CLK);
 cif.iwait = 0;
+cif.iload = 32'hBBBBBBBB;
+@(posedge CLK);
+cif.iwait = 1;
+cif.iload = 32'h0;
 
+
+tb_test_num ++;
+tb_test_case = "iREN, idx = 2, tag = 138, MISS ";
+dcif.imemaddr = {26'd138 ,4'd2,2'b00};
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+cif.iwait = 0;
+cif.iload = 32'hCCCCCCCC;
+@(posedge CLK);
+cif.iwait = 1;
+cif.iload = 32'h0;
+
+
+
+
+tb_test_num ++;
+tb_test_case = "iREN, case 1-3 IHIT ";
+dcif.imemaddr = {26'd0 ,4'd0,2'b00};
+@(posedge CLK);
+dcif.imemaddr = {26'd136 ,4'd1,2'b00};
+@(posedge CLK);
+dcif.imemaddr = {26'd138 ,4'd2,2'b00};
+@(posedge CLK);
+
+
+tb_test_num ++;
+tb_test_case = "iREN, idx = 0, tag = 140, MISS / REPLACE ";
+dcif.imemaddr = {26'd140 ,4'd0,2'b00};
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+cif.iwait = 0;
+cif.iload = 32'hDEADBEEF;
+@(posedge CLK);
+cif.iwait = 1;
+cif.iload = 32'h0;
+
+
+
+tb_test_num ++;
+tb_test_case = "iREN, idx = 0, tag = 0 (case1), MISS / REPLACE ";
+dcif.imemaddr = {26'd0 ,4'd0,2'b00};
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+@(posedge CLK);
+
+/*
+cif.iwait = 0;
+cif.iload = 32'hAAAAAAAA;
+@(posedge CLK);
+cif.iwait = 1;
+cif.iload = 32'h0;
+*/
+
+
+/*
 //forever begin
  // wait(dcif.ihit==1);
 //end
 $display("index 1");
 
 
+cif.iload = 32'hBBBBBBBB;
 
-tb_test_num ++;
 dcif.imemaddr = {26'd136 ,4'd2,2'b00};
 cif.iwait = 0;
 
@@ -109,7 +185,7 @@ cif.iwait = 0;
 //end
 $display("index 2");
 
-/*
+
 tb_test_num ++;
 dcif.imemaddr = {26'd135 ,4'd1,2'b00};
 

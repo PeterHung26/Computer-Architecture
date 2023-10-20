@@ -61,7 +61,7 @@ always_comb begin: IHIT_LOGIC
 end
 */
 typedef enum logic [1:0] {
-    IDLE, REPLACE
+    IDLE, REPLACE, IDLE_HIT
 } s_t; 
 
 
@@ -101,20 +101,24 @@ always_comb begin: IHIT_LOGIC
     state_nxt       = state;
 
     case(state)
-    IDLE: begin
+    IDLE, IDLE_HIT: begin
         if(dcif.imemREN  && ~dcif.dmemREN && ~dcif.dmemWEN)  begin
             if(tag == iframes[idx].tag && iframes[idx].valid) 
-            begin : IHIT
-                state_nxt = IDLE;
+            begin 
+                state_nxt = IDLE_HIT;
                 dcif.ihit = 1;
                 dcif.imemload = iframes[idx].data;
             end
             else 
-            begin : IMISS       
+            begin    
                 state_nxt = REPLACE;          
             end
-        end
+        end 
+        else state_nxt = IDLE;
+        
     end
+
+
 
     REPLACE: begin
         cif.iREN         =  dcif.imemREN;
