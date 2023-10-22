@@ -22,19 +22,19 @@ always_comb begin : HAZARD
     huif.MEM_FLUSH = 1'b0;
     huif.PC_EN = 1'b1;
     huif.pr_halt = 1'b0;
-    if(!huif.ihit && !huif.dhit) begin
+    if(!huif.ihit && !huif.dhit) begin // No hit at both data and instruction
         huif.PC_EN = 1'b0;
         huif.IF_EN = 1'b0;
         huif.ID_EN = 1'b0;
         huif.EX_EN = 1'b0;
         huif.MEM_EN = 1'b0;
     end
-    else if(huif.PCSrc) begin
+    else if(huif.PCSrc) begin // Branch at MEM stage
         huif.EX_FLUSH = 1'b1;
         huif.ID_FLUSH = 1'b1;
         huif.IF_FLUSH = 1'b1;
     end
-    else if(huif.ID_dread && ((huif.ID_rt == huif.IF_rs) || (huif.ID_rt == huif.IF_rt))) begin
+    else if(huif.ID_dread && ((huif.ID_rt == huif.IF_rs) || (huif.ID_rt == huif.IF_rt))) begin // LW at EXE stage
         if(huif.cu_Jump) begin
             huif.IF_FLUSH = 1'b1;
         end
@@ -43,6 +43,7 @@ always_comb begin : HAZARD
             huif.IF_EN = 1'b0;
             huif.ID_FLUSH = 1'b1;
             huif.PC_EN = 1'b0;
+            huif.pr_halt = 1'b1;
         end
         else begin
             huif.ID_FLUSH = 1'b1;
@@ -64,7 +65,7 @@ always_comb begin : HAZARD
         huif.PC_EN = 1'b0;
         huif.pr_halt = 1'b1;
     end
-    else if(huif.dhit) begin //Structural hazard
+    else if(huif.dhit && !huif.ihit) begin //Structural hazard
         huif.PC_EN = 1'b0;
         huif.IF_FLUSH = 1'b1;
     end

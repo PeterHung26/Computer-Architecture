@@ -26,7 +26,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
 
     logic miss;
     logic way; // indicate left is hit or right is hit
-    logic used_most;
+    //logic used_most;
     logic [4:0] halt_cnt;
     logic [4:0] nxt_halt_cnt;
     logic [4:0] halt_cnt_wb;
@@ -98,13 +98,13 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             end
             CHECK: begin // Check whether the replaced data are dirty or not
                 if(cache[index].mru == 0) begin // Check right
-                    if(cache[index].right.dirty)
+                    if(cache[index].right.dirty && cache[index].right.valid)
                         nxt_state = WB1;
                     else
                         nxt_state = WAIT1;
                 end
                 else begin // Check left
-                    if(cache[index].left.dirty)
+                    if(cache[index].left.dirty && cache[index].right.valid)
                         nxt_state = WB1;
                     else
                         nxt_state = WAIT1;
@@ -139,13 +139,13 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     nxt_state = HIT_CNT;
                 else begin
                     if(halt_cnt[3]) begin   // Check Right 
-                        if(cache[halt_cnt[2:0]].right.dirty)
+                        if(cache[halt_cnt[2:0]].right.dirty && cache[halt_cnt[2:0]].right.valid)
                             nxt_state = HWB1;
                         else
                             nxt_state = HCHECK;
                     end
                     else begin // Check Left
-                        if(cache[halt_cnt[2:0]].left.dirty)
+                        if(cache[halt_cnt[2:0]].left.dirty && cache[halt_cnt[2:0]].left.valid)
                             nxt_state = HWB1;
                         else
                             nxt_state = HCHECK;
@@ -356,7 +356,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     dif.dstore = cache[index].right.data[1];
                 end
                 else begin // replace left
-                    dif.daddr = {cache[index].left.tag, index, 3'b000};
+                    dif.daddr = {cache[index].left.tag, index, 3'b100};
                     dif.dstore = cache[index].left.data[1];
                 end
             end
