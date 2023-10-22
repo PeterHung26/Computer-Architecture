@@ -1,5 +1,5 @@
 #--------------------------------------
-# Test Associative
+# IHIT and DHIT same cycle
 #--------------------------------------
 
     org   0x0000
@@ -13,8 +13,12 @@
     ori   $2, $zero, 0x6666
     sw    $1, 4($3)          #store second word
     sw    $2, 4($4)
-    lw    $1, 0($3)           #load first word
-    lw    $2, 0($4)
-    lw    $1, 4($3)           #load second word
-    lw    $2, 4($4)
+    ori   $1, $zero, 0x0005
+    start:
+    addi  $1, $1, -1
+    addi  $3, $3, 4
+    lw    $2, 0($3)           #load first word
+    bne   $1, $zero, start
+
     halt
+

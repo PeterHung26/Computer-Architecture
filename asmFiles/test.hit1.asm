@@ -11,8 +11,8 @@
     sw    $2, 0($4)
     ori   $1, $zero, 0x8787
     ori   $2, $zero, 0x6666
-    sw    $1, 1($3)          #store second word
-    sw    $2, 1($4)
+    sw    $1, 4($3)          #store second word
+    sw    $2, 4($4)
     ori   $1, $zero, 0x0005
     start:
     addi  $1, $1, -1
