@@ -33,7 +33,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     word_t hit_cnt;
     word_t nxt_hit_cnt;
 
-    integer i;
+    //integer i;
     integer j;
 
     assign tag = dcif.dmemaddr[31:6];
@@ -44,7 +44,80 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             state <= GOOD;
             halt_cnt <= '0;
             hit_cnt <= '0;
-            for(i = 0; i < 8; i++) begin
+            cache[0].left.valid <= '0;
+            cache[0].left.dirty <= '0;
+            cache[0].left.tag <= '0;
+            cache[0].left.data <= '0;
+            cache[0].right.valid <= '0;
+            cache[0].right.dirty <= '0;
+            cache[0].right.tag <= '0;
+            cache[0].right.data <= '0;
+            cache[0].mru <= 0;
+            cache[1].left.valid <= '0;
+            cache[1].left.dirty <= '0;
+            cache[1].left.tag <= '0;
+            cache[1].left.data <= '0;
+            cache[1].right.valid <= '0;
+            cache[1].right.dirty <= '0;
+            cache[1].right.tag <= '0;
+            cache[1].right.data <= '0;
+            cache[1].mru <= 0;
+            cache[2].left.valid <= '0;
+            cache[2].left.dirty <= '0;
+            cache[2].left.tag <= '0;
+            cache[2].left.data <= '0;
+            cache[2].right.valid <= '0;
+            cache[2].right.dirty <= '0;
+            cache[2].right.tag <= '0;
+            cache[2].right.data <= '0;
+            cache[2].mru <= 0;
+            cache[3].left.valid <= '0;
+            cache[3].left.dirty <= '0;
+            cache[3].left.tag <= '0;
+            cache[3].left.data <= '0;
+            cache[3].right.valid <= '0;
+            cache[3].right.dirty <= '0;
+            cache[3].right.tag <= '0;
+            cache[3].right.data <= '0;
+            cache[3].mru <= 0;
+            cache[4].left.valid <= '0;
+            cache[4].left.dirty <= '0;
+            cache[4].left.tag <= '0;
+            cache[4].left.data <= '0;
+            cache[4].right.valid <= '0;
+            cache[4].right.dirty <= '0;
+            cache[4].right.tag <= '0;
+            cache[4].right.data <= '0;
+            cache[4].mru <= 0;
+            cache[5].left.valid <= '0;
+            cache[5].left.dirty <= '0;
+            cache[5].left.tag <= '0;
+            cache[5].left.data <= '0;
+            cache[5].right.valid <= '0;
+            cache[5].right.dirty <= '0;
+            cache[5].right.tag <= '0;
+            cache[5].right.data <= '0;
+            cache[5].mru <= 0;
+            cache[6].left.valid <= '0;
+            cache[6].left.dirty <= '0;
+            cache[6].left.tag <= '0;
+            cache[6].left.data <= '0;
+            cache[6].right.valid <= '0;
+            cache[6].right.dirty <= '0;
+            cache[6].right.tag <= '0;
+            cache[6].right.data <= '0;
+            cache[6].mru <= 0;
+            cache[7].left.valid <= '0;
+            cache[7].left.dirty <= '0;
+            cache[7].left.tag <= '0;
+            cache[7].left.data <= '0;
+            cache[7].right.valid <= '0;
+            cache[7].right.dirty <= '0;
+            cache[7].right.tag <= '0;
+            cache[7].right.data <= '0;
+            cache[7].mru <= 0;
+
+            /*for(i = 0; i < 8; i++) begin
                 cache[i].left.valid <= '0;
                 cache[i].left.dirty <= '0;
                 cache[i].left.tag <= '0;
@@ -54,7 +127,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 cache[i].right.tag <= '0;
                 cache[i].right.data <= '0;
                 cache[i].mru <= 0;
-            end
+            end*/
         end
         else begin
             halt_cnt <= nxt_halt_cnt;
