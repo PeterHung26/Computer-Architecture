@@ -102,7 +102,7 @@ always_comb begin: IHIT_LOGIC
 
     case(state)
     IDLE: begin
-        if(dcif.imemREN  && ~dcif.dmemREN && ~dcif.dmemWEN)  begin
+        if(dcif.imemREN)  begin
             if(tag == iframes[idx].tag && iframes[idx].valid) 
             begin : IHIT
                 state_nxt = IDLE;

@@ -82,6 +82,8 @@ module datapath (
   assign prif.halt = huif.pr_halt;
   assign pcif.PC_EN = huif.PC_EN;
   assign dpif.imemREN = huif.iREN;
+  assign huif.EX_dread = prif.EX_dread;
+  assign huif.EX_dwrite = prif.EX_dwrite;
 
   //Forwarding Unit
   assign fuif.ID_rs = prif.ID_rs;
