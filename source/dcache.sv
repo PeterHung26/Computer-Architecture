@@ -44,6 +44,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             state <= GOOD;
             halt_cnt <= '0;
             hit_cnt <= '0;
+            // To prevent latch (I don't know why for loop will cause the latch)
             cache[0].left.valid <= '0;
             cache[0].left.dirty <= '0;
             cache[0].left.tag <= '0;
