@@ -170,7 +170,7 @@ module memory_control (
           if(ccif.iREN[0])
             nxt_snooper = 1'b0;
           else
-            nxt_snooper = 1'b0;
+            nxt_snooper = 1'b1;
         end
       end
       BUSRD: begin

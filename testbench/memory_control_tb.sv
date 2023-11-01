@@ -17,7 +17,7 @@ module memory_control_tb;
     // interface
     caches_if cif0();
     caches_if cif1();
-    cache_control_if #(.CPUS(1)) ccif(cif0, cif1);
+    cache_control_if #(.CPUS(2)) ccif(cif0, cif1);
     cpu_ram_if ramif();
 
     //Connect signals between ccif and ramif
@@ -29,7 +29,7 @@ module memory_control_tb;
     assign ramif.ramREN = ccif.ramREN;
 
     //test program
-    test #(.PERIOD(PERIOD)) PROG(CLK, nRST, cif0, ramif);
+    test #(.PERIOD(PERIOD)) PROG(CLK, nRST, cif0, cif1, ramif);
 
     // DUT
     `ifndef MAPPED
@@ -81,10 +81,11 @@ program test(
     input logic CLK,
     output logic nRST,
     caches_if cif0,
+    caches_if cif1,
     cpu_ram_if ramif
 );
     parameter PERIOD = 10;
-    int tb_test_num;
+    integer tb_test_num;
     int i;
     string tb_test_case;
 
@@ -95,6 +96,7 @@ program test(
         cif0.daddr = 0;
         cif0.dWEN = 0;
         cif0.dREN = 0;
+        
 
         memfd = $fopen(filename,"w");
         if (memfd)
@@ -149,6 +151,177 @@ program test(
         cif0.daddr = 0;
         cif0.dstore = 0;
         cif0.iaddr = 0;
+        cif0.ccwrite = 0;
+        cif0.cctrans = 0;
+        cif1.iREN = 0;
+        cif1.dREN = 0;
+        cif1.dWEN = 0;
+        cif1.daddr = 0;
+        cif1.dstore = 0;
+        cif1.iaddr = 0;
+        cif1.ccwrite = 0;
+        cif1.cctrans = 0;
+        nRST = 0;
+        #(10);
+        nRST = 1;
+        #(15);
+
+
+    tb_test_num = 1;
+    tb_test_case = "P0 dstore";
+	cif0.dREN = 0;
+	cif0.dWEN = 1;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hDEAD;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=0;
+	cif0.cctrans=0;
+	#(30);
+
+
+    tb_test_num = 1;
+    tb_test_case = "P0 1st Write BUSRDX";
+	cif0.dREN = 1;
+	cif0.dWEN = 0;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hBEEF;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=0;
+	cif0.cctrans=0;
+    #(30);
+	cif0.dREN = 0;
+
+  
+
+
+
+    tb_test_num = 2;
+    tb_test_case = "P0 1st Load BUSRD";
+	cif0.dREN = 1;
+	cif0.dWEN = 0;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hEECC;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=0;
+	cif0.cctrans=1;
+    #(60);
+    cif0.dREN = 0;
+    cif0.cctrans=0;
+
+
+    tb_test_num = 3;
+    tb_test_case = "P1 1st Load BUSRD";
+	cif1.dREN = 1;
+	cif1.dWEN = 0;
+	cif1.iREN = 0;
+	cif1.dstore = 32'hEECC;
+	cif1.daddr = 32'h80;
+	cif1.iaddr = 32'h00;
+	cif1.ccwrite=0;
+	cif1.cctrans=1;
+    #(60);
+    cif1.dREN = 0;
+    cif1.cctrans=0;
+
+
+
+    tb_test_num = 4;
+    tb_test_case = "P0 Write miss BusRdX WB";
+	cif0.dREN = 1;
+	cif0.dWEN = 0;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hEECC;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=1;
+	cif0.cctrans=1;
+    cif1.cctrans=1;
+    #(60);
+    cif0.dREN = 0;
+	cif0.ccwrite=0;
+	cif0.cctrans=0;
+     cif1.cctrans=0;
+
+    tb_test_num = 5;
+    tb_test_case = "P0 Write miss BusRdX RAMRD";
+	cif0.dREN = 1;
+	cif0.dWEN = 0;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hEECC;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=1;
+	cif0.cctrans=1;
+    cif1.cctrans=0;
+    #(60);
+    cif0.dREN = 0;
+	cif0.ccwrite=0;
+	cif0.cctrans=0;
+
+
+
+    tb_test_num = 6;
+    tb_test_case = "Arbit";
+	cif0.dREN = 1;
+	cif0.dWEN = 0;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hAAAA;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=0;
+	cif0.cctrans=1;
+    cif1.dREN = 1;
+	cif1.dWEN = 0;
+	cif1.iREN = 0;
+	cif1.dstore = 32'hCCCC;
+	cif1.daddr = 32'h80;
+	cif1.iaddr = 32'h00;
+	cif1.ccwrite=0;
+	cif1.cctrans=1;
+    #(40);
+    cif0.dstore = 32'hBBBB;
+    cif1.dstore = 32'hDDDD;
+    #(20);
+	cif0.dREN = 0;
+	cif0.cctrans=0;
+	cif1.dREN = 0;
+	cif1.cctrans=0;
+
+
+    tb_test_num = 7;
+    tb_test_case = "P0 IFETCH";
+	cif0.dREN = 0;
+	cif0.dWEN = 0;
+	cif0.iREN = 1;
+	cif0.dstore = 32'hEECC;
+	cif0.daddr = 32'hF0;
+	cif0.iaddr = 32'h84;
+	cif0.ccwrite=0;
+	cif0.cctrans=0;
+    #(30);
+
+
+/*
+
+    tb_test_num = 3;
+    tb_test_case = "dlaod[0]";
+	cif0.dREN = 1;
+	cif0.dWEN = 0;
+	cif0.iREN = 0;
+	cif0.dstore = 32'hDEAD;
+	cif0.daddr = 32'h80;
+	cif0.iaddr = 32'h00;
+	cif0.ccwrite=0;
+	cif0.cctrans=0;
+	#(10);
+	#(10);
+	*/
+
+
+/*             
         reset_ram();
         //Test case 1: read 30 instruction from ram
         tb_test_num ++;
@@ -167,6 +340,8 @@ program test(
         tb_test_case = "stop";
         @(negedge CLK);
         @(negedge CLK);
+
+
         //Test case 2: read 30 data from ram
         tb_test_num ++;
         tb_test_case = "read 30 data from ram";
@@ -222,9 +397,14 @@ program test(
         tb_test_case = "stop";
         @(negedge CLK);
         @(negedge CLK);
+
+
+
+        
         // Dump memory
         tb_test_num ++;
         tb_test_case = "Dump memory";
         dump_memory();
+*/
     end
 endprogram
