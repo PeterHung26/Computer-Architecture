@@ -30,6 +30,8 @@ module memory_control (
   logic nxt_snoopied;
   logic [25:0] snooptag;
   logic [2:0] snoopindex;
+  logic grant; // Arbitration signal
+  logic nxt_grant;
   //assign snooptag = ccif.snoopaddr[31:6];
   //assign snoopindex = ccif.snoopaddr[5:3];
   always_ff @( posedge CLK, negedge nRST ) begin
@@ -37,11 +39,13 @@ module memory_control (
       state <= IDLE;
       snooper <= 1'b0;
       snoopied <= 1'b0;
+      grant <= 0;
     end
     else begin
       state <= nxt_state;
       snooper <= nxt_snooper;
       snoopied <= nxt_snoopied;
+      grant <= nxt_grant;
     end
   end
 
@@ -138,39 +142,40 @@ module memory_control (
     ccif.ramaddr = '0;
     ccif.ramWEN = '0;
     ccif.ramREN = '0;
+    nxt_grant = grant;
     casez (state)
       IDLE: begin
         if(ccif.dWEN[0] || ccif.dWEN[1]) begin
-          if(ccif.dWEN[0])
-            nxt_snooper = 1'b0;
+          if(ccif.dWEN[grant])
+            nxt_snooper = grant;
           else
-            nxt_snooper = 1'b1;
+            nxt_snooper = !grant;
         end
         else if((ccif.dREN[0] && ccif.cctrans[0] && !ccif.ccwrite[0]) || (ccif.dREN[1] && ccif.cctrans[1] && !ccif.ccwrite[1])) begin
-          if(ccif.dREN[0] && ccif.cctrans[0] && !ccif.ccwrite[0]) begin
-            nxt_snooper = 1'b0;
-            nxt_snoopied = 1'b1;
+          if(ccif.dREN[grant] && ccif.cctrans[grant] && !ccif.ccwrite[grant]) begin
+            nxt_snooper = grant;
+            nxt_snoopied = !grant;
           end
           else begin
-            nxt_snooper = 1'b1;
-            nxt_snoopied = 1'b0;
+            nxt_snooper = !grant;
+            nxt_snoopied = grant;
           end
         end
         else if((ccif.dREN[0] && ccif.cctrans[0] && ccif.ccwrite[0]) || (ccif.dREN[1] && ccif.cctrans[1] && ccif.ccwrite[1])) begin
-          if(ccif.dREN[0] && ccif.cctrans[0] && ccif.ccwrite[0]) begin
-            nxt_snooper = 1'b0;
-            nxt_snoopied = 1'b1;
+          if(ccif.dREN[grant] && ccif.cctrans[grant] && ccif.ccwrite[grant]) begin
+            nxt_snooper = grant;
+            nxt_snoopied = !grant;
           end
           else begin
-            nxt_snooper = 1'b1;
-            nxt_snoopied = 1'b0;
+            nxt_snooper = !grant;
+            nxt_snoopied = grant;
           end
         end
         else if(ccif.iREN[0] || ccif.iREN[1]) begin
-          if(ccif.iREN[0])
-            nxt_snooper = 1'b0;
+          if(ccif.iREN[grant])
+            nxt_snooper = grant;
           else
-            nxt_snooper = 1'b1;
+            nxt_snooper = !grant;
         end
       end
       BUSRD: begin
@@ -194,8 +199,14 @@ module memory_control (
         ccif.ramstore = ccif.dstore[snoopied];
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b100};
         ccif.ramWEN = 1'b1;
-        if(ccif.ramstate == ACCESS)
+        if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
+          if(snooper == grant)
+            nxt_grant = !grant;
+          else
+            nxt_grant = grant;
+        end
+          
       end
       RAMRD1: begin
         ccif.ramREN = 1'b1;
@@ -208,8 +219,13 @@ module memory_control (
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b100};
         ccif.dload[snooper] = ccif.ramload;
-        if(ccif.ramstate == ACCESS)
+        if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
+          if(snooper == grant)
+            nxt_grant = !grant;
+          else
+            nxt_grant = grant;
+        end 
       end
       BUSRDX: begin
         ccif.ccwait[snoopied] = 1'b1;
@@ -227,15 +243,25 @@ module memory_control (
         ccif.ramWEN = 1'b1;
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b100};
         ccif.ramstore = ccif.dstore[snooper];
-        if(ccif.ramstate == ACCESS)
+        if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0;
+          if(snooper == grant)
+            nxt_grant = !grant;
+          else
+            nxt_grant = grant;
+        end
       end
       IFETCH: begin
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {ccif.iaddr[snooper][31:3], 3'b100};
         ccif.iload[snooper] = ccif.ramload;
-        if(ccif.ramstate == ACCESS)
+        if(ccif.ramstate == ACCESS) begin
           ccif.iwait[snooper] = 1'b0;
+          if(snooper == grant)
+            nxt_grant = !grant;
+          else
+            nxt_grant = grant;
+        end
       end 
     endcase
   end
