@@ -30,7 +30,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     logic snoop_offset;
 
     state_t nxt_state, state;
-    cachebus_t nct_cstate, cstate;
+    cachebus_t nxt_cstate, cstate;
     logic reply_done; // Signal for cache telling controller the reply is done
     //logic have; // Signal to bus controller telling it has the data
     logic s_i, m_s, m_i; // Signals telling cache which state to go
@@ -67,96 +67,12 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             m_i <= 0;
             m_s <= 0;
             halt_cnt <= '0;
-            hit_cnt <= '0;
-            // To prevent latch (I don't know why for loop will cause the latch)
-            cache[0].left.valid <= '0;
-            cache[0].left.dirty <= '0;
-            cache[0].left.tag <= '0;
-            cache[0].left.data <= '0;
-            cache[0].right.valid <= '0;
-            cache[0].right.dirty <= '0;
-            cache[0].right.tag <= '0;
-            cache[0].right.data <= '0;
-            cache[0].mru <= 0;
-            cache[1].left.valid <= '0;
-            cache[1].left.dirty <= '0;
-            cache[1].left.tag <= '0;
-            cache[1].left.data <= '0;
-            cache[1].right.valid <= '0;
-            cache[1].right.dirty <= '0;
-            cache[1].right.tag <= '0;
-            cache[1].right.data <= '0;
-            cache[1].mru <= 0;
-            cache[2].left.valid <= '0;
-            cache[2].left.dirty <= '0;
-            cache[2].left.tag <= '0;
-            cache[2].left.data <= '0;
-            cache[2].right.valid <= '0;
-            cache[2].right.dirty <= '0;
-            cache[2].right.tag <= '0;
-            cache[2].right.data <= '0;
-            cache[2].mru <= 0;
-            cache[3].left.valid <= '0;
-            cache[3].left.dirty <= '0;
-            cache[3].left.tag <= '0;
-            cache[3].left.data <= '0;
-            cache[3].right.valid <= '0;
-            cache[3].right.dirty <= '0;
-            cache[3].right.tag <= '0;
-            cache[3].right.data <= '0;
-            cache[3].mru <= 0;
-            cache[4].left.valid <= '0;
-            cache[4].left.dirty <= '0;
-            cache[4].left.tag <= '0;
-            cache[4].left.data <= '0;
-            cache[4].right.valid <= '0;
-            cache[4].right.dirty <= '0;
-            cache[4].right.tag <= '0;
-            cache[4].right.data <= '0;
-            cache[4].mru <= 0;
-            cache[5].left.valid <= '0;
-            cache[5].left.dirty <= '0;
-            cache[5].left.tag <= '0;
-            cache[5].left.data <= '0;
-            cache[5].right.valid <= '0;
-            cache[5].right.dirty <= '0;
-            cache[5].right.tag <= '0;
-            cache[5].right.data <= '0;
-            cache[5].mru <= 0;
-            cache[6].left.valid <= '0;
-            cache[6].left.dirty <= '0;
-            cache[6].left.tag <= '0;
-            cache[6].left.data <= '0;
-            cache[6].right.valid <= '0;
-            cache[6].right.dirty <= '0;
-            cache[6].right.tag <= '0;
-            cache[6].right.data <= '0;
-            cache[6].mru <= 0;
-            cache[7].left.valid <= '0;
-            cache[7].left.dirty <= '0;
-            cache[7].left.tag <= '0;
-            cache[7].left.data <= '0;
-            cache[7].right.valid <= '0;
-            cache[7].right.dirty <= '0;
-            cache[7].right.tag <= '0;
-            cache[7].right.data <= '0;
-            cache[7].mru <= 0;
-
-            /*for(i = 0; i < 8; i++) begin
-                cache[i].left.valid <= '0;
-                cache[i].left.dirty <= '0;
-                cache[i].left.tag <= '0;
-                cache[i].left.data <= '0;
-                cache[i].right.valid <= '0;
-                cache[i].right.dirty <= '0;
-                cache[i].right.tag <= '0;
-                cache[i].right.data <= '0;
-                cache[i].mru <= 0;
-            end*/
+            //hit_cnt <= '0;
+            cache <= '0;
         end
         else begin
             halt_cnt <= nxt_halt_cnt;
-            hit_cnt <= nxt_hit_cnt;
+            //hit_cnt <= nxt_hit_cnt;
             state <= nxt_state;
             cstate <= nxt_cstate;
             cache[index] <= nxt_cache;
@@ -167,7 +83,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         end
     end
 
-    always_comb begin: NXT_CSTATE_AND_OUTPUT
+    always_comb begin: NXT_CSTATE_AND_OUTPUT //Logic dealing with memory controller snoop in
         nxt_cstate = cstate;
         have = 0;
         nxt_s_i = s_i;
@@ -218,7 +134,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                                 have = 0;
                             end
                         end
-                        else(cmiss == 0 && cway == 1) begin
+                        else if(cmiss == 0 && cway == 1) begin
                             if(cache[snoop_index].right.dirty) begin // Modified, M -> S
                                 nxt_cstate = REPLY;
                                 have = 1;
@@ -592,6 +508,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         nxt_halt_cnt = halt_cnt;
         //nxt_hit_cnt = hit_cnt;
         halt_cnt_wb = halt_cnt - 1;
+        reply_done = 1'b0;
         case (state)
             GOOD: begin
                 if(miss == 0) begin
@@ -619,26 +536,31 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     end
                     else if(dcif.dmemWEN) begin
                         if(way == 0) begin
-                            if(offset == 1'b0) begin
-                                nxt_cache.left.data[0] = dcif.dmemstore;
+                            if(cache[index].left.dirty) begin // M -> M
+                                if(offset == 1'b0) begin
+                                    nxt_cache.left.data[0] = dcif.dmemstore;
+                                end
+                                else begin
+                                    nxt_cache.left.data[1] = dcif.dmemstore;
+                                end
+                                nxt_cache.left.dirty = 1'b1;
+                                nxt_cache.mru = 0;
+                                dcif.dhit = 1'b1;
                             end
-                            else begin
-                                nxt_cache.left.data[1] = dcif.dmemstore;
-                            end
-                            nxt_cache.left.dirty = 1'b1;
-                            nxt_cache.mru = 0;
                         end
                         else begin
-                            if(offset == 1'b0) begin
-                                nxt_cache.right.data[0] = dcif.dmemstore;
+                            if(cache[index].right.dirty) begin // M -> M
+                                if(offset == 1'b0) begin
+                                    nxt_cache.right.data[0] = dcif.dmemstore;
+                                end
+                                else begin
+                                    nxt_cache.right.data[1] = dcif.dmemstore;
+                                end
+                                nxt_cache.right.dirty = 1'b1;
+                                nxt_cache.mru = 1;
+                                dcif.dhit = 1'b1;
                             end
-                            else begin
-                                nxt_cache.right.data[1] = dcif.dmemstore;
-                            end
-                            nxt_cache.right.dirty = 1'b1;
-                            nxt_cache.mru = 1;
                         end
-                        dcif.dhit = 1'b1;
                         //nxt_hit_cnt = hit_cnt + 1;
                     end
                 end
@@ -703,14 +625,14 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     if(cache[index].mru == 0) begin // replace right
                         nxt_cache.right.data[1] = dif.dload;
                         nxt_cache.right.valid = 1'b1;
-                        nxt_cache.right.dirty = 1'b0;
+                        nxt_cache.right.dirty = 1'b1;
                         nxt_cache.right.tag = tag;
                         nxt_cache.right_snooptag = tag;
                     end
                     else begin // replace left
                         nxt_cache.left.data[1] = dif.dload;
                         nxt_cache.left.valid = 1'b1;
-                        nxt_cache.left.dirty = 1'b0;
+                        nxt_cache.left.dirty = 1'b1;
                         nxt_cache.left.tag = tag;
                         nxt_cache.left_snooptag = tag;
                     end
@@ -739,10 +661,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 end
                 if(!dif.dwait) begin
                     if(cache[index].mru == 0) begin
-                        nxt_cache[index].right.valid = 1'b0;
+                        nxt_cache.right.valid = 1'b0;
                     end
                     else begin
-                        nxt_cache[index].left.valid = 1'b0;
+                        nxt_cache.left.valid = 1'b0;
                     end
                 end
             end
@@ -772,6 +694,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 else begin
                     respond_nxt_cache.right.valid = 1'b0;
                 end
+                reply_done = 1'b1;
             end
             Reply_RDX1: begin
                 dif.cctrans = 1'b1;
@@ -781,8 +704,8 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     dif.dstore = cache[snoop_index].left.data[0];
                 end
                 else begin
-                    dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b000};
-                    dif.dstore = cache[snoop_index].left.data[0];
+                    dif.daddr = {cache[snoop_index].right.tag, snoop_index, 3'b000};
+                    dif.dstore = cache[snoop_index].right.data[0];
                 end
             end
             Reply_RDX2: begin // M -> I
@@ -790,17 +713,18 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 dif.dWEN = 1'b1;
                 if(cway == 0) begin
                     dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b100};
-                    dif.dstore = cache[snoop_index].left.data[0];
+                    dif.dstore = cache[snoop_index].left.data[1];
                 end
                 else begin
-                    dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b100};
-                    dif.dstore = cache[snoop_index].left.data[0];
+                    dif.daddr = {cache[snoop_index].right.tag, snoop_index, 3'b100};
+                    dif.dstore = cache[snoop_index].right.data[1];
                 end
                 if(!dif.dwait) begin
                     if(cway == 0)
                         respond_nxt_cache.left.valid = 1'b0;
                     else
                         respond_nxt_cache.right.valid = 1'b0;
+                    reply_done = 1'b1;
                 end
             end
             Reply_RD1: begin
@@ -811,8 +735,8 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     dif.dstore = cache[snoop_index].left.data[0];
                 end
                 else begin
-                    dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b000};
-                    dif.dstore = cache[snoop_index].left.data[0];
+                    dif.daddr = {cache[snoop_index].right.tag, snoop_index, 3'b000};
+                    dif.dstore = cache[snoop_index].right.data[0];
                 end
             end
             Reply_RD2: begin // M -> S
@@ -820,17 +744,18 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 dif.dWEN = 1'b1;
                 if(cway == 0) begin
                     dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b100};
-                    dif.dstore = cache[snoop_index].left.data[0];
+                    dif.dstore = cache[snoop_index].left.data[1];
                 end
                 else begin
-                    dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b100};
-                    dif.dstore = cache[snoop_index].left.data[0];
+                    dif.daddr = {cache[snoop_index].right.tag, snoop_index, 3'b100};
+                    dif.dstore = cache[snoop_index].right.data[1];
                 end
                 if(!dif.dwait) begin
                     if(cway == 0)
                         respond_nxt_cache.left.dirty = 1'b0;
                     else
                         respond_nxt_cache.right.dirty = 1'b0;
+                    reply_done = 1'b1;
                 end
             end
             HCHECK: begin

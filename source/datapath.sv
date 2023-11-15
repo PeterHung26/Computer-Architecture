@@ -46,7 +46,7 @@ module datapath (
   register_file RF (CLK, nRST, rfif);
   control_unit CU (CLK, nRST, cuif);
   //request_unit RU (CLK, nRST, ruif);
-  program_counter PC (CLK, nRST, pcif);
+  program_counter #(.PC_INIT(PC_INIT)) PC (CLK, nRST, pcif);
   extender EX (CLK, exif);
   pipeline_register PR (CLK, nRST, prif);
   hazard_unit HU (CLK, nRST, huif);

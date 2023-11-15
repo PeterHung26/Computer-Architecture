@@ -9,13 +9,14 @@
 module caches (
   input logic CLK, nRST,
   datapath_cache_if dcif,
-  caches_if cif
+  caches_if cif,
+  output have
 );
 
   // icache
   icache  ICACHE(CLK, nRST, dcif, cif);
   //dcache
-  dcache  DCACHE(CLK, nRST, dcif, cif);
+  dcache  DCACHE(CLK, nRST, dcif, cif, have);
 
   // dcache invalidate before halt handled by dcache when exists
   

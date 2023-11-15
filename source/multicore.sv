@@ -16,6 +16,8 @@ module multicore (
 parameter PC0 = 0;
 parameter PC1 = 'h200;
 
+  logic have1;
+  logic have2;
   // bus interface
   datapath_cache_if         dcif0 ();
   datapath_cache_if         dcif1 ();
@@ -28,10 +30,10 @@ parameter PC1 = 'h200;
   datapath #(.PC_INIT(PC0)) DP0 (CLK, nRST, dcif0);
   datapath #(.PC_INIT(PC1)) DP1 (CLK, nRST, dcif1);
   // map caches
-  caches       CM0 (CLK, nRST, dcif0, cif0);
-  caches       CM1 (CLK, nRST, dcif1, cif1);
+  caches       CM0 (CLK, nRST, dcif0, cif0, have1);
+  caches       CM1 (CLK, nRST, dcif1, cif1, have2);
   // map coherence
-  memory_control            CC (CLK, nRST, ccif);
+  memory_control            CC (CLK, nRST, have1, have2, ccif);
 
   // interface connections
   assign scif.memaddr = ccif.ramaddr;
