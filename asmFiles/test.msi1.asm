@@ -15,19 +15,6 @@
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   halt      # that's all
 
 # Second processor
@@ -36,29 +23,9 @@
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   ori   $1, $zero, 0x500
   lw    $4, 0($1) # Second: I -> S, First: M -> S, first word
   lw    $5, 4($1) # Second: I -> S, First: M -> S, second word
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   halt      # that's all
 
 
@@ -66,6 +33,6 @@
   cfw   0x7337
   cfw   0x2701
   cfw   0x1337
-  cfw   0XBEEF
+  cfw   0xBEEF
 
 

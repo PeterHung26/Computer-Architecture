@@ -13,7 +13,7 @@
 `include "cpu_types_pkg.vh"
 
 module memory_control (
-  input logic CLK, nRST,
+  input logic CLK, nRST, have1, have2,  
   cache_control_if.cc ccif
 );
   // type import
@@ -63,10 +63,18 @@ module memory_control (
           nxt_state = IFETCH;
       end
       BUSRD: begin
-        if(ccif.cctrans[snoopied])
-          nxt_state = WB1;
-        else
-          nxt_state = RAMRD1;
+        if(snoopied) begin
+          if(have2)
+            nxt_state = WB1;
+          else
+            nxt_state = RAMRD1;
+        end
+        else begin
+          if(have1)
+            nxt_state = WB1;
+          else
+            nxt_state = RAMRD1;
+        end
       end
       WB1: begin
         if(ccif.ramstate == ACCESS)
@@ -93,10 +101,18 @@ module memory_control (
           nxt_state = RAMRD2;
       end
       BUSRDX: begin
-        if(ccif.cctrans[snoopied])
-          nxt_state = WB1;
-        else
-          nxt_state = RAMRD1;
+        if(snoopied) begin
+          if(have2)
+            nxt_state = WB1;
+          else
+            nxt_state = RAMRD1;
+        end
+        else begin
+          if(have1)
+            nxt_state = WB1;
+          else
+            nxt_state = RAMRD1;
+        end
       end
       RAMWR1: begin
         if(ccif.ramstate == ACCESS)
@@ -189,8 +205,10 @@ module memory_control (
         ccif.ramstore = ccif.dstore[snoopied];
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b000};
         ccif.ramWEN = 1'b1;
-        if(ccif.ramstate == ACCESS)
+        if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
+          ccif.dwait[snoopied] = 1'b0; // Tell the snoopied data are ready
+        end
       end
       WB2: begin
         ccif.ccwait[snoopied] = 1'b1;
@@ -201,6 +219,7 @@ module memory_control (
         ccif.ramWEN = 1'b1;
         if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
+          ccif.dwait[snoopied] = 1'b0; // Tell the snoopied data are ready
           if(snooper == grant)
             nxt_grant = !grant;
           else
@@ -211,6 +230,7 @@ module memory_control (
       RAMRD1: begin
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b000};
+        ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper]; // Send address for other cahce to S -> I
         ccif.dload[snooper] = ccif.ramload;
         if(ccif.ramstate == ACCESS)
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
@@ -218,6 +238,7 @@ module memory_control (
       RAMRD2: begin
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b100};
+        ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper]; // Send address for other cahce to S -> I
         ccif.dload[snooper] = ccif.ramload;
         if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
@@ -253,7 +274,7 @@ module memory_control (
       end
       IFETCH: begin
         ccif.ramREN = 1'b1;
-        ccif.ramaddr = {ccif.iaddr[snooper][31:3], 3'b100};
+        ccif.ramaddr = {ccif.iaddr[snooper]};
         ccif.iload[snooper] = ccif.ramload;
         if(ccif.ramstate == ACCESS) begin
           ccif.iwait[snooper] = 1'b0;

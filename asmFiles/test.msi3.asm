@@ -19,20 +19,6 @@
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   halt      # that's all
 
 # Second processor
@@ -42,25 +28,8 @@
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
   lw    $4, 0($1) # Second: I -> S, First: S -> S, first word
   lw    $5, 4($1) # Second: I -> S, First: S -> S, second word
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   nop
   nop
   nop
@@ -77,6 +46,6 @@
   cfw   0x7337
   cfw   0x2701
   cfw   0x1337
-  cfw   0XBEEF
+  cfw   0xBEEF
 
 

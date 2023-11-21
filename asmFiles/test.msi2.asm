@@ -15,31 +15,10 @@
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   halt      # that's all
 
 # Second processor
   org   0x0200
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   nop
   nop
   nop
@@ -52,12 +31,6 @@
   nop
   nop
   nop
-  nop
-  nop
-  nop
-  nop
-  nop
-  nop
   halt      # that's all
 
 
@@ -65,6 +38,6 @@
   cfw   0x7337
   cfw   0x2701
   cfw   0x1337
-  cfw   0XBEEF
+  cfw   0xBEEF
 
 

@@ -5,12 +5,10 @@ add wave -noupdate /dcache_tb/nRST
 add wave -noupdate /dcache_tb/DUT/state
 add wave -noupdate /dcache_tb/DUT/miss
 add wave -noupdate /dcache_tb/DUT/way
-add wave -noupdate /dcache_tb/DUT/used_most
-add wave -noupdate /dcache_tb/DUT/hit_cnt
 add wave -noupdate /dcache_tb/DUT/halt_cnt
 add wave -noupdate -expand -subitemconfig {/dcache_tb/DUT/nxt_cache.left -expand /dcache_tb/DUT/nxt_cache.right -expand} /dcache_tb/DUT/nxt_cache
-add wave -noupdate -group Case /dcache_tb/PROG/tb_test_num
-add wave -noupdate -group Case /dcache_tb/PROG/tb_test_case
+add wave -noupdate -expand -group Case /dcache_tb/PROG/tb_test_num
+add wave -noupdate -expand -group Case /dcache_tb/PROG/tb_test_case
 add wave -noupdate -group {Input from Datapath} /dcache_tb/dcif/datomic
 add wave -noupdate -group {Input from Datapath} /dcache_tb/dcif/dmemREN
 add wave -noupdate -group {Input from Datapath} /dcache_tb/dcif/dmemWEN
@@ -26,8 +24,13 @@ add wave -noupdate -expand -group {Output to memory controller} /dcache_tb/dif/d
 add wave -noupdate -expand -group {Output to memory controller} /dcache_tb/dif/dWEN
 add wave -noupdate -expand -group {Output to memory controller} /dcache_tb/dif/dstore
 add wave -noupdate -expand -group {Output to memory controller} /dcache_tb/dif/daddr
+add wave -noupdate -expand -group {Coherence Signal} /dcache_tb/PROG/dif/ccwait
+add wave -noupdate -expand -group {Coherence Signal} /dcache_tb/PROG/dif/ccinv
+add wave -noupdate -expand -group {Coherence Signal} /dcache_tb/PROG/dif/ccwrite
+add wave -noupdate -expand -group {Coherence Signal} /dcache_tb/PROG/dif/cctrans
+add wave -noupdate -expand -group {Coherence Signal} /dcache_tb/PROG/dif/ccsnoopaddr
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {319 ns} 0}
+WaveRestoreCursors {{Cursor 1} {634 ns} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 122
@@ -43,4 +46,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {275 ns} {807 ns}
+WaveRestoreZoom {345 ns} {877 ns}

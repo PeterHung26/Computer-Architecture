@@ -8,10 +8,11 @@ module hazard_unit(
 
 import cpu_types_pkg::*;
 
-logic nxt_iREN;
+//logic nxt_iREN;
 
 always_comb begin : HAZARD
-    nxt_iREN = 1'b1;
+    //nxt_iREN = 1'b1;
+    huif.iREN = 1'b1;
     huif.IF_EN = 1'b1;
     huif.ID_EN = 1'b1;
     huif.EX_EN = 1'b1;
@@ -43,7 +44,8 @@ always_comb begin : HAZARD
             huif.IF_FLUSH = 1'b1;
         end
         else if(huif.cu_halt) begin // Halt at decode stage
-            nxt_iREN = 1'b0;
+            //nxt_iREN = 1'b0;
+            huif.iREN = 1'b0;
             huif.IF_EN = 1'b0;
             huif.ID_FLUSH = 1'b1;
             huif.PC_EN = 1'b0;
@@ -59,7 +61,8 @@ always_comb begin : HAZARD
         huif.IF_FLUSH = 1'b1;
     end
     else if(huif.cu_halt) begin // Halt
-        nxt_iREN = 1'b0;
+        //nxt_iREN = 1'b0;
+        huif.iREN = 1'b0;
         huif.IF_EN = 1'b0;
         huif.ID_FLUSH = 1'b1;
         huif.PC_EN = 1'b0;
@@ -71,13 +74,13 @@ always_comb begin : HAZARD
     end
 end
 
-always_ff @(posedge CLK, negedge nRST) begin
+/*always_ff @(posedge CLK, negedge nRST) begin
     if(!nRST) begin
         huif.iREN <= 1'b1;
     end
     else begin
         huif.iREN <= nxt_iREN;
     end
-end
+end*/
 
 endmodule

@@ -8,13 +8,15 @@ module program_counter(
 
 import cpu_types_pkg::*;
 
+parameter PC_INIT = 0;
+
 word_t nxt_pcaddr;
 //word_t temp1;
 //word_t temp2;
 
 always_ff @(posedge CLK, negedge nRST) begin : PROGRAM_COUNTER
     if(!nRST) begin
-        pcif.pcaddr <= '0;
+        pcif.pcaddr <= PC_INIT;
     end
     else begin
         if(pcif.PC_EN)
