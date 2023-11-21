@@ -13,12 +13,12 @@
 `include "cpu_types_pkg.vh"
 
 module memory_control (
-  input logic CLK, nRST, have1, have2,  
+  input logic CLK, nRST,  
   cache_control_if.cc ccif
 );
   // type import
   import cpu_types_pkg::*;
-  typedef enum logic [3:0] {IDLE, BUSRD, WB1, WB2, BUSRDX, RAMRD1, RAMRD2, RAMWR1, RAMWR2, IFETCH} state_t;
+  typedef enum logic [3:0] {IDLE, SNOOP, BUSRD1, BUSRD2, WB1, WB2, BUSRDX1, BUSRDX2, RAMRD1, RAMRD2, RAMWR1, RAMWR2, IFETCH} state_t;
   // number of cpus for cc
   parameter CPUS = 2;
   
@@ -53,24 +53,42 @@ module memory_control (
     nxt_state = state;
     casez (state)
       IDLE: begin
-        if(ccif.dWEN[0] || ccif.dWEN[1])
+        /*if(ccif.dWEN[0] || ccif.dWEN[1])
           nxt_state = RAMWR1;
         else if((ccif.dREN[0] && ccif.cctrans[0] && !ccif.ccwrite[0]) || (ccif.dREN[1] && ccif.cctrans[1] && !ccif.ccwrite[1]))
           nxt_state = BUSRD;
         else if((ccif.dREN[0] && ccif.cctrans[0] && ccif.ccwrite[0]) || (ccif.dREN[1] && ccif.cctrans[1] && ccif.ccwrite[1]))
           nxt_state = BUSRDX;
         else if(ccif.iREN[0] || ccif.iREN[1])
+          nxt_state = IFETCH;*/
+        if(ccif.dWEN[0] || ccif.dWEN[1])
+          nxt_state = RAMWR1;
+        else if(ccif.dREN[0] || ccif.dREN[1])
+          nxt_state = SNOOP;
+        else if(ccif.iREN[0] || ccif.iREN[1])
           nxt_state = IFETCH;
       end
-      BUSRD: begin
+      SNOOP: begin
+        if((ccif.dREN[0] && ccif.cctrans[0] && !ccif.ccwrite[0]) || (ccif.dREN[1] && ccif.cctrans[1] && !ccif.ccwrite[1]))
+          nxt_state = BUSRD1;
+        else if((ccif.dREN[0] && ccif.cctrans[0] && ccif.ccwrite[0]) || (ccif.dREN[1] && ccif.cctrans[1] && ccif.ccwrite[1]))
+          nxt_state = BUSRDX1;
+      end
+      BUSRD1: begin
+        nxt_state = BUSRD2;
+      end
+      BUSRDX1: begin
+        nxt_state = BUSRDX2;
+      end
+      BUSRD2: begin
         if(snoopied) begin
-          if(have2)
+          if(ccif.cctrans[snoopied])
             nxt_state = WB1;
           else
             nxt_state = RAMRD1;
         end
         else begin
-          if(have1)
+          if(ccif.cctrans[snoopied])
             nxt_state = WB1;
           else
             nxt_state = RAMRD1;
@@ -100,15 +118,15 @@ module memory_control (
         else
           nxt_state = RAMRD2;
       end
-      BUSRDX: begin
+      BUSRDX2: begin
         if(snoopied) begin
-          if(have2)
+          if(ccif.cctrans[snoopied])
             nxt_state = WB1;
           else
             nxt_state = RAMRD1;
         end
         else begin
-          if(have1)
+          if(ccif.cctrans[snoopied])
             nxt_state = WB1;
           else
             nxt_state = RAMRD1;
@@ -194,7 +212,14 @@ module memory_control (
             nxt_snooper = !grant;
         end
       end
-      BUSRD: begin
+      SNOOP: begin
+        ccif.ccwait[snoopied] = 1'b1;
+      end
+      BUSRD1: begin
+        ccif.ccwait[snoopied] = 1'b1;
+        ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper];
+      end
+      BUSRD2: begin
         ccif.ccwait[snoopied] = 1'b1;
         ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper];
       end
@@ -248,7 +273,12 @@ module memory_control (
             nxt_grant = grant;
         end 
       end
-      BUSRDX: begin
+      BUSRDX1: begin
+        ccif.ccwait[snoopied] = 1'b1;
+        ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper];
+        ccif.ccinv[snoopied] = 1'b1;
+      end
+      BUSRDX2: begin
         ccif.ccwait[snoopied] = 1'b1;
         ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper];
         ccif.ccinv[snoopied] = 1'b1;
