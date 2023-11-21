@@ -30,8 +30,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     logic snoop_offset;
 
     state_t nxt_state, state;
+    logic done; // Output signal of Done state
     cachebus_t nxt_cstate, cstate;
     logic reply_done; // Signal for cache telling controller the reply is done
+    logic replying;
     //logic have; // Signal to bus controller telling it has the data
     logic s_i, m_s, m_i; // Signals telling cache which state to go
     logic nxt_s_i, nxt_m_s, nxt_m_i;
@@ -75,8 +77,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             //hit_cnt <= nxt_hit_cnt;
             state <= nxt_state;
             cstate <= nxt_cstate;
-            cache[index] <= nxt_cache;
-            cache[snoop_index] <= respond_nxt_cache;
+            if(replying)
+                cache[snoop_index] <= respond_nxt_cache;
+            else
+                cache[index] <= nxt_cache;
             s_i <= nxt_s_i;
             m_i <= nxt_m_i;
             m_s <= nxt_m_s;
@@ -89,72 +93,138 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         nxt_s_i = s_i;
         nxt_m_s = m_s;
         nxt_m_i = m_i;
+        replying = 0;
         case (cstate)
             IDLE: begin
-                if(dif.ccwait) begin
-                    if(dif.ccinv) begin // BusRdX
-                        if(cmiss == 0 && cway == 0) begin
-                            if(cache[snoop_index].left.dirty) begin // Modified, M -> I
-                                nxt_cstate = REPLY;
-                                have = 1;
-                                nxt_m_i = 1;
+                if(!done) begin
+                    if(dif.ccwait) begin
+                        if(dif.ccinv) begin // BusRdX
+                            if(cmiss == 0 && cway == 0) begin
+                                if(cache[snoop_index].left.dirty) begin // Modified, M -> I
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_i = 1;
+                                end
+                                else begin // Shared, S -> I
+                                    nxt_cstate = REPLY;
+                                    have = 0;
+                                    nxt_s_i = 1;
+                                end
                             end
-                            else begin // Shared, S -> I
-                                nxt_cstate = REPLY;
-                                have = 0;
-                                nxt_s_i = 1;
+                            else if(cmiss == 0 && cway == 1) begin
+                                if(cache[snoop_index].right.dirty) begin // Modified, M -> I
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_i = 1;
+                                end
+                                else begin // Shared, S -> I
+                                    nxt_cstate = REPLY;
+                                    have = 0;
+                                    nxt_s_i = 1;
+                                end
                             end
-                        end
-                        else if(cmiss == 0 && cway == 1) begin
-                            if(cache[snoop_index].right.dirty) begin // Modified, M -> I
-                                nxt_cstate = REPLY;
-                                have = 1;
-                                nxt_m_i = 1;
-                            end
-                            else begin // Shared, S -> I
-                                nxt_cstate = REPLY;
-                                have = 0;
-                                nxt_s_i = 1;
-                            end
-                        end
-                        else begin // Invalid
-                            nxt_cstate = IDLE;
-                            have = 0;
-                        end
-                    end
-                    else begin // BusRd
-                        if(cmiss == 0 && cway == 0) begin
-                            if(cache[snoop_index].left.dirty) begin // Modified, M -> S
-                                nxt_cstate = REPLY;
-                                have = 1;
-                                nxt_m_s = 1;
-                            end
-                            else begin // Shared, S -> S
+                            else begin // Invalid
                                 nxt_cstate = IDLE;
                                 have = 0;
                             end
                         end
-                        else if(cmiss == 0 && cway == 1) begin
-                            if(cache[snoop_index].right.dirty) begin // Modified, M -> S
-                                nxt_cstate = REPLY;
-                                have = 1;
-                                nxt_m_s = 1;
+                        else begin // BusRd
+                            if(cmiss == 0 && cway == 0) begin
+                                if(cache[snoop_index].left.dirty) begin // Modified, M -> S
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_s = 1;
+                                end
+                                else begin // Shared, S -> S
+                                    nxt_cstate = IDLE;
+                                    have = 0;
+                                end
                             end
-                            else begin // Shared, S -> S
+                            else if(cmiss == 0 && cway == 1) begin
+                                if(cache[snoop_index].right.dirty) begin // Modified, M -> S
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_s = 1;
+                                end
+                                else begin // Shared, S -> S
+                                    nxt_cstate = IDLE;
+                                    have = 0;
+                                end
+                            end
+                            else begin // Invalid
                                 nxt_cstate = IDLE;
                                 have = 0;
                             end
                         end
-                        else begin // Invalid
-                            nxt_cstate = IDLE;
-                            have = 0;
+                    end
+                    else
+                        nxt_cstate = IDLE;
+                    end
+                    if(dif.ccwait) begin
+                        if(dif.ccinv) begin // BusRdX
+                            if(cmiss == 0 && cway == 0) begin
+                                if(cache[snoop_index].left.dirty) begin // Modified, M -> I
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_i = 1;
+                                end
+                                else begin // Shared, S -> I
+                                    nxt_cstate = REPLY;
+                                    have = 0;
+                                    nxt_s_i = 1;
+                                end
+                            end
+                            else if(cmiss == 0 && cway == 1) begin
+                                if(cache[snoop_index].right.dirty) begin // Modified, M -> I
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_i = 1;
+                                end
+                                else begin // Shared, S -> I
+                                    nxt_cstate = REPLY;
+                                    have = 0;
+                                    nxt_s_i = 1;
+                                end
+                            end
+                            else begin // Invalid
+                                nxt_cstate = IDLE;
+                                have = 0;
+                            end
+                        end
+                        else begin // BusRd
+                            if(cmiss == 0 && cway == 0) begin
+                                if(cache[snoop_index].left.dirty) begin // Modified, M -> S
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_s = 1;
+                                end
+                                else begin // Shared, S -> S
+                                    nxt_cstate = IDLE;
+                                    have = 0;
+                                end
+                            end
+                            else if(cmiss == 0 && cway == 1) begin
+                                if(cache[snoop_index].right.dirty) begin // Modified, M -> S
+                                    nxt_cstate = REPLY;
+                                    have = 1;
+                                    nxt_m_s = 1;
+                                end
+                                else begin // Shared, S -> S
+                                    nxt_cstate = IDLE;
+                                    have = 0;
+                                end
+                            end
+                            else begin // Invalid
+                                nxt_cstate = IDLE;
+                                have = 0;
+                            end
                         end
                     end
-                end
-                else
-                    nxt_cstate = IDLE;
+                    else
+                        nxt_cstate = IDLE;
             end
             REPLY: begin
+                replying = 1;
                 if(reply_done) begin
                     nxt_cstate = IDLE;
                     nxt_s_i = 1'b0;
@@ -169,6 +239,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
 
     always_comb begin: NXT_STATE
         nxt_state = state;
+        nxt_halt_cnt = halt_cnt;
         case (state)
             GOOD: begin
                 if(dcif.halt == 1'b1) begin
@@ -418,20 +489,29 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     nxt_state = GOOD;
             end
             HCHECK: begin
-                if(halt_cnt[4])
-                    nxt_state = DONE;
+                if(nxt_s_i)
+                    nxt_state = S_TO_I;
+                else if(nxt_m_s)
+                    nxt_state = Reply_RD1;
+                else if(nxt_m_i)
+                    nxt_state = Reply_RDX1;
                 else begin
-                    if(halt_cnt[3]) begin   // Check Right 
-                        if(cache[halt_cnt[2:0]].right.dirty && cache[halt_cnt[2:0]].right.valid)
-                            nxt_state = HWB1;
-                        else
-                            nxt_state = HCHECK;
-                    end
-                    else begin // Check Left
-                        if(cache[halt_cnt[2:0]].left.dirty && cache[halt_cnt[2:0]].left.valid)
-                            nxt_state = HWB1;
-                        else
-                            nxt_state = HCHECK;
+                    nxt_halt_cnt = halt_cnt + 1;
+                    if(halt_cnt[4])
+                        nxt_state = DONE;
+                    else begin
+                        if(halt_cnt[3]) begin   // Check Right 
+                            if(cache[halt_cnt[2:0]].right.dirty && cache[halt_cnt[2:0]].right.valid)
+                                nxt_state = HWB1;
+                            else
+                                nxt_state = HCHECK;
+                        end
+                        else begin // Check Left
+                            if(cache[halt_cnt[2:0]].left.dirty && cache[halt_cnt[2:0]].left.valid)
+                                nxt_state = HWB1;
+                            else
+                                nxt_state = HCHECK;
+                        end
                     end
                 end
             end
@@ -505,10 +585,11 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         nxt_cache.mru = cache[index].mru;
         nxt_cache.left_snooptag = cache[index].left_snooptag;
         nxt_cache.right_snooptag = cache[index].right_snooptag;
-        nxt_halt_cnt = halt_cnt;
+        //nxt_halt_cnt = halt_cnt;
         //nxt_hit_cnt = hit_cnt;
         halt_cnt_wb = halt_cnt - 1;
         reply_done = 1'b0;
+        done = 1'b0;
         case (state)
             GOOD: begin
                 if(miss == 0) begin
@@ -758,9 +839,12 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     reply_done = 1'b1;
                 end
             end
-            HCHECK: begin
-                nxt_halt_cnt = halt_cnt + 1;
-            end
+            /*HCHECK: begin
+                // if(!(nxt_m_i || nxt_m_s || nxt_s_i))
+                    nxt_halt_cnt = halt_cnt + 1;
+                // else
+                //     nxt_halt_cnt = halt_cnt;
+            end*/
             HWB1: begin
                 dif.dWEN = 1'b1;
                 if(!halt_cnt_wb[3]) begin // Store back left
@@ -785,6 +869,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             end
             DONE: begin
                 dcif.flushed = 1'b1;
+                done = 1'b1;
             end
         endcase
     end

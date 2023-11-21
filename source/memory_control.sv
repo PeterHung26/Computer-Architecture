@@ -238,6 +238,7 @@ module memory_control (
       RAMRD2: begin
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b100};
+        ccif.ccsnoopaddr[snoopied] = ccif.daddr[snooper]; // Send address for other cahce to S -> I
         ccif.dload[snooper] = ccif.ramload;
         if(ccif.ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready

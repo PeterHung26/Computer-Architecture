@@ -13,16 +13,18 @@ module dcache_tb;
     //interface
     datapath_cache_if dcif();
     caches_if dif();
+    logic have;
     // test program
     test #(.PERIOD (PERIOD)) PROG (
         .CLK(CLK),
         .nRST(nRST),
         .dcif(dcif),
-        .dif(dif)
+        .dif(dif),
+        .have(have)
     );
     // DUT
     `ifndef MAPPED
-        dcache DUT(CLK, nRST, dcif, dif);
+        dcache DUT(CLK, nRST, dcif, dif, have);
     `else
         dcache DUT(
             .\dcif.halt (dcif.halt),
@@ -46,7 +48,8 @@ module dcache_tb;
             .\dif.ccwrite (dif.ccwrite),
             .\dif.cctrans (dif.cctrans),
             .\nRST (nRST),
-            .\CLK (CLK)
+            .\CLK (CLK),
+            .\have(have)
         );
     `endif
 endmodule
@@ -55,7 +58,9 @@ program test(
     input logic CLK,
     output logic nRST,
     datapath_cache_if dcif,
-    caches_if dif
+    caches_if dif,
+    input logic have
+
 );
     import cpu_types_pkg::*;
 
@@ -98,6 +103,9 @@ program test(
     input logic [31:0] exp_dmemload;
     input logic exp_flushed;
     input logic [31:0] exp_dstore;
+    input logic exp_have;
+    input logic exp_ccwrite;
+    input logic exp_cctrans;
     begin
         $display(tb_test_case);
         if(dif.dREN == exp_dREN)
@@ -124,6 +132,18 @@ program test(
             $display("The dstore value is as expected: %0h", dif.dstore);
         else
             $display("The dstore value is not as expected: %0h", dif.dstore);
+        if(have == exp_have)
+            $display("The have value is as expected: %0h", have);
+        else
+            $display("The have value is not as expected: %0h", have);
+        if(dif.ccwrite == exp_ccwrite)
+            $display("The ccwrite value is as expected: %0h", dif.ccwrite);
+        else
+            $display("The ccwrite value is not as expected: %0h", dif.ccwrite);
+        if(dif.cctrans == exp_cctrans)
+            $display("The cctrans value is as expected: %0h", dif.cctrans);
+        else
+            $display("The cctrans value is not as expected: %0h", dif.cctrans);
     end
     endtask
 
@@ -138,6 +158,9 @@ program test(
         dcif.dmemaddr = 1'b0;
         dif.dwait = 1'b1;
         dif.dload = '0;
+        dif.ccwait = '0;
+        dif.ccinv = '0;
+        dif.ccsnoopaddr = '0;
         // Case 0: Reset
         tb_test_num++;
         tb_test_case = "Reset";
@@ -147,21 +170,21 @@ program test(
         tb_test_case = "Initial Load Data Right(DEAD and BADB)";
         @(negedge CLK);
         set_load(32'h00000000);
-        check_out(1'b0,1'b0, 1'b0, '0, 1'b0, 32'b0); // no dhit
+        check_out(1'b0,1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // no dhit
         @(negedge CLK); // CHECK
-        @(negedge CLK); // WAIT1
-        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0);
-        @(negedge CLK); // Still in WAIT1
+        @(negedge CLK); // IRD1
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
+        @(negedge CLK); // Still in IRD1
         dif.dwait = 1'b0;
         dif.dload = 32'h0000DEAD;
-        @(negedge CLK); // WAIT2
+        @(negedge CLK); // IRD2
         dif.dwait = 1'b1;
-        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0,  32'b0);
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0,  32'b0, 1'b0, 1'b0, 1'b1);
         @(negedge CLK); // Still in WAIT2
         dif.dwait = 1'b0;
         dif.dload = 32'h0000BADB;
         @(negedge CLK); // Back to GOOD
-        check_out(1'b0, 1'b0, 1'b1, 32'h0000DEAD, 1'b0, 32'b0);
+        check_out(1'b0, 1'b0, 1'b1, 32'h0000DEAD, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0);
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -172,21 +195,21 @@ program test(
         @(posedge CLK);
         set_load(32'h80000000);
         @(negedge CLK);
-        check_out(1'b0,1'b0, 1'b0, '0, 1'b0, 32'b0); // no dhit
+        check_out(1'b0,1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // no dhit
         @(negedge CLK); // CHECK
-        @(negedge CLK); // WAIT1
-        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0);
-        @(negedge CLK); // Still in WAIT1
+        @(negedge CLK); // IRD1
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
+        @(negedge CLK); // Still in IRD1
         dif.dwait = 1'b0;
         dif.dload = 32'h00008787;
-        @(negedge CLK); // WAIT2
+        @(negedge CLK); // IRD2
         dif.dwait = 1'b1;
-        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0);
-        @(negedge CLK); // Still in WAIT2
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
+        @(negedge CLK); // Still in IRD2
         dif.dwait = 1'b0;
         dif.dload = 32'h00005454;
         @(negedge CLK); // Back to GOOD
-        check_out(1'b0, 1'b0, 1'b1, 32'h00008787, 1'b0, 32'b0);
+        check_out(1'b0, 1'b0, 1'b1, 32'h00008787, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0);
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -197,7 +220,7 @@ program test(
         @(posedge CLK); // GOOD
         set_load(32'h00000000); // First word at right
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h0000DEAD, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h0000DEAD, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -207,7 +230,7 @@ program test(
         @(posedge CLK); // GOOD
         set_load(32'h80000004); // Second word at left
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h00005454, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h00005454, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -217,7 +240,7 @@ program test(
         @(posedge CLK); // GOOD
         set_load(32'h00000004); // Second word at right
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h0000BADB, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h0000BADB, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -227,7 +250,7 @@ program test(
         @(posedge CLK); // GOOD
         set_load(32'h00000004); // Second word at right
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h0000BADB, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h0000BADB, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -237,21 +260,21 @@ program test(
         @(posedge CLK);
         set_load(32'h40000004);
         @(negedge CLK);
-        check_out(1'b0,1'b0, 1'b0, '0, 1'b0, 32'b0); // no dhit
+        check_out(1'b0,1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // no dhit
         @(negedge CLK); // CHECK
-        @(negedge CLK); // WAIT1
-        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0);
-        @(negedge CLK); // Still in WAIT1
+        @(negedge CLK); // IRD1
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
+        @(negedge CLK); // Still in IRD1
         dif.dwait = 1'b0;
         dif.dload = 32'h00000857;
-        @(negedge CLK); // WAIT2
+        @(negedge CLK); // IRD2
         dif.dwait = 1'b1;
-        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0);
-        @(negedge CLK); // Still in WAIT2
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
+        @(negedge CLK); // Still in IRD2
         dif.dwait = 1'b0;
         dif.dload = 32'h00003838;
         @(negedge CLK); // Back to GOOD
-        check_out(1'b0, 1'b0, 1'b1, 32'h00003838, 1'b0, 32'b0);
+        check_out(1'b0, 1'b0, 1'b1, 32'h00003838, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0);
         @(negedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -262,57 +285,68 @@ program test(
         @(posedge CLK); // GOOD
         set_store(32'h00000000, 32'h00007777);
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'b0, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); //  no dhit, go to SRDX1
+        @(negedge CLK); // SRDX1
+        check_out(1'b1, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0, 1'b0, 1'b1, 1'b1);
+        dif.dwait = 1'b0;
+        @(negedge CLK); // SRDX2
+        check_out(1'b1, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0, 1'b0, 1'b1, 1'b1);
+        @(negedge CLK); // GOOD
+        check_out(1'b0, 1'b0, 1'b1, 32'b0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0);
+        dif.dwait = 1'b1;
         @(posedge CLK);
         dcif.dmemstore = '0;
         dcif.dmemWEN = 1'b0;
         dcif.dmemREN = 1'b1;
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h00007777, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h00007777, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
+        @(negedge CLK);
+        dcif.dmemREN = 1'b0;
+        dcif.dmemaddr = '0;
         // Case 10: Read the left three times to make the left most recently used
         tb_test_num++;
         tb_test_case = "Read the left three times to make the left most recently used";
         @(posedge CLK); // GOOD
         set_load(32'h40000000); // First word at left
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h00000857, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h00000857, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(posedge CLK);
         set_load(32'h40000004); // Second word at left
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h00003838, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h00003838, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(posedge CLK);
-        set_load(32'h40000000); // Second word at left
+        set_load(32'h40000000); // First word at left
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, 32'h00000857, 1'b0, 32'b0); // dhit
+        check_out(1'b0, 1'b0, 1'b1, 32'h00000857, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // dhit
         @(posedge CLK);
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
         // Case 11: Load value from address which is not on dcache
         tb_test_num++;
-        tb_test_case = "Store value at address which is not on dcache";
+        tb_test_case = "Load value at address which is not on dcache";
         @(posedge CLK); // GOOD
         set_load(32'h20000000);
         @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0); // no dhit
+        check_out(1'b0, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0); // no dhit
         @(negedge CLK); // CHECK
         @(negedge CLK); // WB1
-        check_out(1'b0, 1'b1, 1'b0, 32'b0, 1'b0, 32'h00007777);
+        check_out(1'b0, 1'b1, 1'b0, 32'b0, 1'b0, 32'h00007777, 1'b0, 1'b0, 1'b0);
         @(negedge CLK); // Still in WB1
-        check_out(1'b0, 1'b1, 1'b0, 32'b0, 1'b0, 32'h00007777);
+        check_out(1'b0, 1'b1, 1'b0, 32'b0, 1'b0, 32'h00007777, 1'b0, 1'b0, 1'b0);
         dif.dwait = 1'b0;
         @(negedge CLK); // WB2
         dif.dwait = 1'b1;
-        check_out(1'b0, 1'b1, 1'b0, 32'b0, 1'b0, 32'h0000BADB);
+        check_out(1'b0, 1'b1, 1'b0, 32'b0, 1'b0, 32'h0000BADB, 1'b0, 1'b0, 1'b0);
         @(negedge CLK); // Still in WB2
         dif.dwait = 1'b0;
-        @(negedge CLK); // WAIT1
+        @(negedge CLK); // IRD1
         dif.dload = 32'h00009999;
-        check_out(1'b1, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0);
-        @(negedge CLK); // WAIT2
+        check_out(1'b1, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
+        @(negedge CLK); // IRD2
         dif.dload = 32'h00005555;
-        check_out(1'b1, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0);
+        check_out(1'b1, 1'b0, 1'b0, 32'b0, 1'b0, 32'b0, 1'b0, 1'b0, 1'b1);
         @(negedge CLK); // GOOD
-        check_out(1'b0, 1'b0, 1'b1, 32'h00009999, 1'b0, 32'b0);
+        check_out(1'b0, 1'b0, 1'b1, 32'h00009999, 1'b0, 32'b0, 1'b0, 1'b0, 1'b0);
         @(negedge CLK); // GOOD
         dcif.dmemREN = 1'b0;
         dcif.dmemaddr = '0;
@@ -322,36 +356,57 @@ program test(
         tb_test_num++;
         tb_test_case = "Store value to right part";
         set_store(32'h20000000, 32'h87878787);
-        @(negedge CLK);
-        check_out(1'b0, 1'b0, 1'b1, '0, 1'b0, '0);
+        @(negedge CLK); // GOOD
+        check_out(1'b0, 1'b0, 1'b0, '0, 1'b0, '0, 1'b0, 1'b0, 1'b0);
+        @(negedge CLK); // SRDX1
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, '0, 1'b0, 1'b1, 1'b1);
+        dif.dwait = 1'b0;
+        @(negedge CLK); // SRDX2
+        check_out(1'b1, 1'b0, 1'b0, '0, 1'b0, '0, 1'b0, 1'b1, 1'b1);
+        @(negedge CLK); // GOOD
+        check_out(1'b0, 1'b0, 1'b1, '0, 1'b0, '0, 1'b0, 1'b0, 1'b0);
         @(posedge CLK);
         dcif.dmemWEN = 1'b0;
         dcif.dmemaddr = '0;
         dcif.dmemstore = '0;
+        // Case 13: Receive ccwait to shared state block
+        @(posedge CLK); // GOOD
+        tb_test_num++;
+        tb_test_case = "Receive ccinv to shared state block";
+        dif.ccwait = 1'b1;
+        dif.ccinv = 1'b1;
+        dif.ccsnoopaddr = 32'h40000000;
+        @(posedge CLK);
+        @(negedge CLK); // S_to_I
+        check_out(1'b0, 1'b0, 1'b0, '0, 1'b0, '0, 1'b0, 1'b0, 1'b1);
+        @(posedge CLK); // GOOD
+        dif.ccwait = 1'b0;
+        dif.ccinv = 1'b1;
+        dif.ccsnoopaddr = '0;
+        // Case 14: Receive ccwait to modified state block
+        @(posedge CLK); // GOOD
+        tb_test_num++;
+        tb_test_case = "Receive ccwait to modified state block";
+        dif.ccwait = 1'b1;
+        dif.ccsnoopaddr = 32'h20000000;
+        @(negedge CLK);
+        @(negedge CLK); // Reply_RD1
+        check_out(1'b0, 1'b1, 1'b0, '0, 1'b0, 32'h87878787, 1'b0, 1'b0, 1'b1);
+        dif.dwait = 1'b0;
+        @(negedge CLK); // Reply_RD2
+        check_out(1'b0, 1'b1, 1'b0, '0, 1'b0, 32'h00005555, 1'b0, 1'b0, 1'b1);
+        @(posedge CLK); // GOOD
+        dif.ccwait = 1'b0;
+        dif.ccsnoopaddr = '0;
         // Case 13: Receive halt from datapath
         tb_test_num++;
         tb_test_case = "Receive halt from datapath";
         dcif.halt = 1'b1;
         @(negedge CLK); // GOOD
         @(negedge CLK); // HCHECK
-        #(PERIOD*8); // There is no dirty at left part
-        @(negedge CLK); // HWB1
-        check_out(1'b0, 1'b1, 1'b0, '0, 1'b0, 32'h87878787);
-        @(negedge CLK); // Still in HWB1
-        dif.dwait = 1'b0;
-        @(negedge CLK); // HWB2
-        dif.dwait = 1'b1;
-        check_out(1'b0, 1'b1, 1'b0, '0, 1'b0, 32'h00005555);
-        @(negedge CLK); // Still in HWB2
-        dif.dwait = 1'b0;
-        @(negedge CLK);// HCHECK
-        #(PERIOD*8); // HIT_CNT
-        check_out(1'b0, 1'b1, 1'b0, '0, 1'b0, 32'h0000000A);
-        dif.dwait = 1'b1;
-        @(negedge CLK); // Still in HIT_CNT
-        dif.dwait = 1'b0;
-        @(negedge CLK); // DONE
-        check_out(1'b0, 1'b0, 1'b0, '0, 1'b1, '0);
+        #(PERIOD*16); // all invalid, so no need to write back to memory
+        @(negedge CLK); // Done
+        check_out(1'b0, 1'b0, 1'b0, '0, 1'b1, '0, 1'b0, 1'b0, 1'b0);
         #PERIOD;
         $stop();
     end
