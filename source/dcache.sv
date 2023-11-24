@@ -5,11 +5,11 @@
 // types
 `include "cpu_types_pkg.vh"
 
-module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dcache dif, output logic have);
+module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dcache dif);
     // type import
     import cpu_types_pkg::*;
-    typedef enum logic [4:0] {GOOD, WB1, WB2, CHECK, IRDX1, IRDX2, IRD1, IRD2, SRDX1, SRDX2, S_TO_I, Reply_RDX1, Reply_RDX2, Reply_RD1, Reply_RD2, HCHECK, HWB1, HWB2, DONE} state_t;
-    typedef enum logic {IDLE, REPLY} cachebus_t; // state of the controller dealing with bus controller
+    typedef enum logic [4:0] {GOOD, SNOOP_CHECK, WB1, WB2, CHECK, IRDX1, IRDX2, IRD1, IRD2, SRDX1, SRDX2, S_TO_I, Reply_RDX1, Reply_RDX2, Reply_RD1, Reply_RD2, HCHECK, HWB1, HWB2, DONE} state_t;
+    //typedef enum logic {IDLE, REPLY} cachebus_t; // state of the controller dealing with bus controller
     typedef struct packed {
         dcache_frame left;
         dcache_frame right;
@@ -30,13 +30,13 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     logic snoop_offset;
 
     state_t nxt_state, state;
-    logic done; // Output signal of Done state
-    cachebus_t nxt_cstate, cstate;
-    logic reply_done; // Signal for cache telling controller the reply is done
+    //logic done; // Output signal of Done state
+    //cachebus_t nxt_cstate, cstate;
+    //logic reply_done; // Signal for cache telling controller the reply is done
     logic replying;
     //logic have; // Signal to bus controller telling it has the data
-    logic s_i, m_s, m_i; // Signals telling cache which state to go
-    logic nxt_s_i, nxt_m_s, nxt_m_i;
+    //logic s_i, m_s, m_i; // Signals telling cache which state to go
+    //logic nxt_s_i, nxt_m_s, nxt_m_i;
     
 
     logic miss;
@@ -64,10 +64,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     always_ff @(posedge CLK, negedge nRST) begin
         if(!nRST) begin
             state <= GOOD;
-            cstate <= IDLE;
-            s_i <= 0;
-            m_i <= 0;
-            m_s <= 0;
+            //cstate <= IDLE;
+            // s_i <= 0;
+            // m_i <= 0;
+            // m_s <= 0;
             halt_cnt <= '0;
             //hit_cnt <= '0;
             cache <= '0;
@@ -76,18 +76,18 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             halt_cnt <= nxt_halt_cnt;
             //hit_cnt <= nxt_hit_cnt;
             state <= nxt_state;
-            cstate <= nxt_cstate;
+            //cstate <= nxt_cstate;
             if(replying)
                 cache[snoop_index] <= respond_nxt_cache;
             else
                 cache[index] <= nxt_cache;
-            s_i <= nxt_s_i;
-            m_i <= nxt_m_i;
-            m_s <= nxt_m_s;
+            // s_i <= nxt_s_i;
+            // m_i <= nxt_m_i;
+            // m_s <= nxt_m_s;
         end
     end
 
-    always_comb begin: NXT_CSTATE_AND_OUTPUT //Logic dealing with memory controller snoop in
+    /*always_comb begin: NXT_CSTATE_AND_OUTPUT //Logic dealing with memory controller snoop in
         nxt_cstate = cstate;
         have = 0;
         nxt_s_i = s_i;
@@ -235,155 +235,77 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     nxt_cstate = REPLY;
             end
         endcase
-    end
+    end*/
 
     always_comb begin: NXT_STATE
         nxt_state = state;
         nxt_halt_cnt = halt_cnt;
         case (state)
             GOOD: begin
-                if(dcif.halt == 1'b1) begin
-                    if(nxt_s_i)
-                        nxt_state = S_TO_I;
-                    else if(nxt_m_s)
-                        nxt_state = Reply_RD1;
-                    else if(nxt_m_i)
-                        nxt_state = Reply_RDX1;
-                    else
-                        nxt_state = HCHECK;
+                if(dif.ccwait) begin
+                    nxt_state = SNOOP_CHECK;
+                end
+                else if(dcif.halt == 1'b1) begin
+                    nxt_state = HCHECK;
                 end
                 else if((dcif.dmemREN || dcif.dmemWEN) && (miss == 1)) begin
-                    if(nxt_s_i)
-                        nxt_state = S_TO_I;
-                    else if(nxt_m_s)
-                        nxt_state = Reply_RD1;
-                    else if(nxt_m_i)
-                        nxt_state = Reply_RDX1;
-                    else
-                        nxt_state = CHECK;
+                    nxt_state = CHECK;
                 end
                 else if(dcif.dmemWEN && (miss == 0)) begin
                     if(way == 0) begin
                         if(!cache[index].left.dirty) begin // Shared, S -> M
-                            if(nxt_s_i)
-                                nxt_state = S_TO_I;
-                            else if(nxt_m_s)
-                                nxt_state = Reply_RD1;
-                            else if(nxt_m_i)
-                                nxt_state = Reply_RDX1;
-                            else
-                                nxt_state = SRDX1;
+                            nxt_state = SRDX1;
                         end
                         else begin
-                            if(nxt_s_i)
-                                nxt_state = S_TO_I;
-                            else if(nxt_m_s)
-                                nxt_state = Reply_RD1;
-                            else if(nxt_m_i)
-                                nxt_state = Reply_RDX1;
-                            else
-                                nxt_state = GOOD;
+                            nxt_state = GOOD;
                         end
                     end
                     else begin
                         if(!cache[index].right.dirty) begin // Shared, S -> M
-                            if(nxt_s_i)
-                                nxt_state = S_TO_I;
-                            else if(nxt_m_s)
-                                nxt_state = Reply_RD1;
-                            else if(nxt_m_i)
-                                nxt_state = Reply_RDX1;
-                            else
-                                nxt_state = SRDX1;
+                            nxt_state = SRDX1;
                         end
                         else begin
-                            if(nxt_s_i)
-                                nxt_state = S_TO_I;
-                            else if(nxt_m_s)
-                                nxt_state = Reply_RD1;
-                            else if(nxt_m_i)
-                                nxt_state = Reply_RDX1;
-                            else
-                                nxt_state = GOOD;
+                            nxt_state = GOOD;
                         end
                     end
                 end
                 else begin
-                    if(nxt_s_i)
-                        nxt_state = S_TO_I;
-                    else if(nxt_m_s)
-                        nxt_state = Reply_RD1;
-                    else if(nxt_m_i)
-                        nxt_state = Reply_RDX1;
-                    else
-                        nxt_state = GOOD;
+                    nxt_state = GOOD;
                 end
             end
             CHECK: begin // Check whether the replaced data are dirty or not
-                if(cache[index].mru == 0) begin // Check right
+                if(dif.ccwait)
+                    nxt_state = SNOOP_CHECK;
+                else if(cache[index].mru == 0) begin // Check right
                     if(cache[index].right.dirty && cache[index].right.valid) begin
-                        if(s_i)
-                            nxt_state = S_TO_I;
-                        else if(m_s)
-                            nxt_state = Reply_RD1;
-                        else if(m_i)
-                            nxt_state = Reply_RDX1;
-                        else
-                            nxt_state = WB1;
+                        nxt_state = WB1;
                     end
                     else begin
-                        if(s_i)
-                            nxt_state = S_TO_I;
-                        else if(m_s)
-                            nxt_state = Reply_RD1;
-                        else if(m_i)
-                            nxt_state = Reply_RDX1;
+                        if(dcif.dmemWEN) begin
+                            nxt_state = IRDX1;
+                        end
                         else begin
-                            if(dcif.dmemWEN) begin
-                                nxt_state = IRDX1;
-                            end
-                            else begin
-                                nxt_state = IRD1;
-                            end
+                            nxt_state = IRD1;
                         end
                     end
                 end
                 else begin // Check left
                     if(cache[index].left.dirty && cache[index].right.valid) begin
-                        if(s_i)
-                            nxt_state = S_TO_I;
-                        else if(m_s)
-                            nxt_state = Reply_RD1;
-                        else if(m_i)
-                            nxt_state = Reply_RDX1;
-                        else
-                            nxt_state = WB1;
+                        nxt_state = WB1;
                     end
                     else begin
-                        if(s_i)
-                            nxt_state = S_TO_I;
-                        else if(m_s)
-                            nxt_state = Reply_RD1;
-                        else if(m_i)
-                            nxt_state = Reply_RDX1;
+                        if(dcif.dmemWEN) begin
+                            nxt_state = IRDX1;
+                        end
                         else begin
-                            if(dcif.dmemWEN) begin
-                                nxt_state = IRDX1;
-                            end
-                            else begin
-                                nxt_state = IRD1;
-                            end
+                            nxt_state = IRD1;
                         end
                     end
                 end
             end
             WB1: begin
-                if(nxt_s_i)
-                    nxt_state = S_TO_I;
-                else if(nxt_m_s)
-                    nxt_state = Reply_RD1;
-                else if(nxt_m_i)
-                    nxt_state = Reply_RDX1;
+                if(dif.ccwait)
+                    nxt_state = SNOOP_CHECK;
                 else begin
                     if(dif.dwait)
                         nxt_state = WB1;
@@ -402,12 +324,8 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 end
             end
             IRDX1: begin
-                if(nxt_s_i)
-                    nxt_state = S_TO_I;
-                else if(nxt_m_s)
-                    nxt_state = Reply_RD1;
-                else if(nxt_m_i)
-                    nxt_state = Reply_RDX1;
+                if(dif.ccwait)
+                    nxt_state = SNOOP_CHECK;
                 else begin
                     if(dif.dwait)
                         nxt_state = IRDX1;
@@ -422,12 +340,8 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     nxt_state = GOOD;
             end
             IRD1: begin
-                if(nxt_s_i)
-                    nxt_state = S_TO_I;
-                else if(nxt_m_s)
-                    nxt_state = Reply_RD1;
-                else if(nxt_m_i)
-                    nxt_state = Reply_RDX1;
+                if(dif.ccwait)
+                    nxt_state = SNOOP_CHECK;
                 else begin
                     if(dif.dwait)
                         nxt_state = IRD1;
@@ -442,12 +356,8 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     nxt_state = GOOD;
             end
             SRDX1: begin
-                if(nxt_s_i)
-                    nxt_state = S_TO_I;
-                else if(nxt_m_s)
-                    nxt_state = Reply_RD1;
-                else if(nxt_m_i)
-                    nxt_state = Reply_RDX1;
+                if(dif.ccwait)
+                    nxt_state = SNOOP_CHECK;
                 else begin
                     if(dif.dwait)
                         nxt_state = SRDX1;
@@ -488,13 +398,57 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 else
                     nxt_state = GOOD;
             end
+            SNOOP_CHECK: begin
+                if(dif.ccwait) begin
+                    if(dif.ccinv) begin // BusRdX
+                        if(cmiss == 0 && cway == 0) begin
+                            if(cache[snoop_index].left.dirty) begin // Modified, M -> I
+                                nxt_state = Reply_RDX1;
+                            end
+                            else begin // Shared, S -> I
+                                nxt_state = S_TO_I;
+                            end
+                        end
+                        else if(cmiss == 0 && cway == 1) begin
+                            if(cache[snoop_index].right.dirty) begin // Modified, M -> I
+                                nxt_state = Reply_RDX1;
+                            end
+                            else begin // Shared, S -> I
+                                nxt_state = S_TO_I;
+                            end
+                        end
+                        else begin // Invalid
+                            nxt_state = GOOD;
+                        end
+                    end
+                    else begin // BusRd
+                        if(cmiss == 0 && cway == 0) begin
+                            if(cache[snoop_index].left.dirty) begin // Modified, M -> S
+                                nxt_state = Reply_RD1;
+                            end
+                            else begin // Shared, S -> S
+                                nxt_state = GOOD;
+                            end
+                        end
+                        else if(cmiss == 0 && cway == 1) begin
+                            if(cache[snoop_index].right.dirty) begin // Modified, M -> S
+                                nxt_state = Reply_RD1;
+                            end
+                            else begin // Shared, S -> S
+                                nxt_state = GOOD;
+                            end
+                        end
+                        else begin // Invalid
+                            nxt_state = GOOD;
+                        end
+                    end
+                end
+                else
+                    nxt_state = GOOD;
+            end
             HCHECK: begin
-                if(nxt_s_i)
-                    nxt_state = S_TO_I;
-                else if(nxt_m_s)
-                    nxt_state = Reply_RD1;
-                else if(nxt_m_i)
-                    nxt_state = Reply_RDX1;
+                if(dif.ccwait)
+                    nxt_state = SNOOP_CHECK;
                 else begin
                     nxt_halt_cnt = halt_cnt + 1;
                     if(halt_cnt[4])
@@ -588,8 +542,9 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         //nxt_halt_cnt = halt_cnt;
         //nxt_hit_cnt = hit_cnt;
         halt_cnt_wb = halt_cnt - 1;
-        reply_done = 1'b0;
-        done = 1'b0;
+        // reply_done = 1'b0;
+        replying = 0;
+        //done = 1'b0;
         case (state)
             GOOD: begin
                 if(miss == 0) begin
@@ -768,18 +723,20 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 end
             end
             S_TO_I: begin
-                dif.cctrans = 1'b1;
+                replying = 1'b1;
+                //dif.cctrans = 1'b1;
                 if(cway == 0) begin
                     respond_nxt_cache.left.valid = 1'b0;
                 end
                 else begin
                     respond_nxt_cache.right.valid = 1'b0;
                 end
-                reply_done = 1'b1;
+                //reply_done = 1'b1;
             end
             Reply_RDX1: begin
                 dif.cctrans = 1'b1;
                 dif.dWEN = 1'b1;
+                replying = 1'b1;
                 if(cway == 0) begin
                     dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b000};
                     dif.dstore = cache[snoop_index].left.data[0];
@@ -792,6 +749,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             Reply_RDX2: begin // M -> I
                 dif.cctrans = 1'b1;
                 dif.dWEN = 1'b1;
+                replying = 1'b1;
                 if(cway == 0) begin
                     dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b100};
                     dif.dstore = cache[snoop_index].left.data[1];
@@ -805,12 +763,13 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                         respond_nxt_cache.left.valid = 1'b0;
                     else
                         respond_nxt_cache.right.valid = 1'b0;
-                    reply_done = 1'b1;
+                    //reply_done = 1'b1;
                 end
             end
             Reply_RD1: begin
                 dif.cctrans = 1'b1;
                 dif.dWEN = 1'b1;
+                replying = 1'b1;
                 if(cway == 0) begin
                     dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b000};
                     dif.dstore = cache[snoop_index].left.data[0];
@@ -823,6 +782,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             Reply_RD2: begin // M -> S
                 dif.cctrans = 1'b1;
                 dif.dWEN = 1'b1;
+                replying = 1'b1;
                 if(cway == 0) begin
                     dif.daddr = {cache[snoop_index].left.tag, snoop_index, 3'b100};
                     dif.dstore = cache[snoop_index].left.data[1];
@@ -836,7 +796,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                         respond_nxt_cache.left.dirty = 1'b0;
                     else
                         respond_nxt_cache.right.dirty = 1'b0;
-                    reply_done = 1'b1;
+                    //reply_done = 1'b1;
                 end
             end
             /*HCHECK: begin
@@ -869,7 +829,7 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             end
             DONE: begin
                 dcif.flushed = 1'b1;
-                done = 1'b1;
+                //done = 1'b1;
             end
         endcase
     end

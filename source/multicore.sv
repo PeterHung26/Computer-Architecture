@@ -30,10 +30,10 @@ parameter PC1 = 'h200;
   datapath #(.PC_INIT(PC0)) DP0 (CLK, nRST, dcif0);
   datapath #(.PC_INIT(PC1)) DP1 (CLK, nRST, dcif1);
   // map caches
-  caches       CM0 (CLK, nRST, dcif0, cif0, have1);
-  caches       CM1 (CLK, nRST, dcif1, cif1, have2);
+  caches       CM0 (CLK, nRST, dcif0, cif0);
+  caches       CM1 (CLK, nRST, dcif1, cif1);
   // map coherence
-  memory_control            CC (CLK, nRST, have1, have2, ccif);
+  memory_control            CC (CLK, nRST, ccif);
 
   // interface connections
   assign scif.memaddr = ccif.ramaddr;
