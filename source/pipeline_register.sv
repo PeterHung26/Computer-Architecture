@@ -59,6 +59,9 @@ logic [31:0]  nxt_MEM_portout;
 logic [4:0]   nxt_MEM_wsel;
 logic         nxt_MEM_halt;
 
+logic [31:0]  nxt_EX_instr;
+logic [31:0]  nxt_ID_instr;
+
 always_ff @ (posedge CLK, negedge nRST) 
 begin
   if(!nRST) begin
@@ -66,6 +69,8 @@ begin
     prif.IF_instr <= '0;
     prif.IF_pc4 <= '0;
     //ID
+    prif.ID_instr <= '0;
+
     prif.ID_pc4 <= '0;
     prif.ID_RegDst <= '0;
     prif.ID_RegWrite <= '0;
@@ -88,6 +93,8 @@ begin
     prif.ID_halt <= '0;
     prif.ID_JR <= '0;
     //EX
+    prif.EX_instr <= '0;
+
     prif.EX_pc4 <= '0;
     prif.EX_JumpReg <= '0;
     prif.EX_BEQ <= '0;
@@ -117,6 +124,8 @@ begin
     prif.IF_instr <= nxt_IF_instr;
     prif.IF_pc4 <= nxt_IF_pc4;
     //ID
+    prif.ID_instr <= nxt_ID_instr;
+
     prif.ID_pc4 <= nxt_ID_pc4;
     prif.ID_RegDst <= nxt_ID_RegDst;
     prif.ID_RegWrite <= nxt_ID_RegWrite;
@@ -139,6 +148,8 @@ begin
     prif.ID_halt <= nxt_ID_halt;
     prif.ID_JR <= nxt_ID_JR;
     //EX
+    prif.EX_instr <= nxt_EX_instr;
+
     prif.EX_pc4 <= nxt_EX_pc4;
     prif.EX_JumpReg <= nxt_EX_JumpReg;
     prif.EX_BEQ <= nxt_EX_BEQ;
@@ -170,6 +181,8 @@ always_comb begin : NXT_LOGIC
   nxt_IF_instr = prif.IF_instr;
   nxt_IF_pc4 = prif.IF_pc4;
   //ID
+  nxt_ID_instr = prif.ID_instr;
+
   nxt_ID_pc4 = prif.ID_pc4;
   nxt_ID_RegDst = prif.ID_RegDst;
   nxt_ID_RegWrite = prif.ID_RegWrite;
@@ -192,6 +205,8 @@ always_comb begin : NXT_LOGIC
   nxt_ID_halt = prif.ID_halt;
   nxt_ID_JR = prif.ID_JR;
   //EX
+  nxt_EX_instr = prif.EX_instr;
+
   nxt_EX_pc4 = prif.EX_pc4;
   nxt_EX_JumpReg = prif.EX_JumpReg;
   nxt_EX_BEQ = prif.EX_BEQ;
@@ -229,7 +244,8 @@ always_comb begin : NXT_LOGIC
     if(prif.halt)
       nxt_ID_halt = prif.ID_halt_in;
     else
-      nxt_ID_halt = '0;
+    // nxt_ID_instr = '0; //stuck
+    nxt_ID_halt = '0;
     nxt_ID_pc4 = '0;
     nxt_ID_RegDst = '0;
     nxt_ID_RegWrite = '0;
@@ -253,6 +269,7 @@ always_comb begin : NXT_LOGIC
     nxt_ID_JR = '0;
   end
   else if(prif.ID_EN) begin
+    nxt_ID_instr = prif.ID_instr_in;
     nxt_ID_pc4 = prif.ID_pc4_in;
     nxt_ID_RegDst = prif.ID_RegDst_in;
     nxt_ID_RegWrite = prif.ID_RegWrite_in;
@@ -280,7 +297,8 @@ always_comb begin : NXT_LOGIC
     if(prif.halt)
       nxt_EX_halt = prif.EX_halt_in;
     else
-      nxt_EX_halt = '0;
+    // nxt_EX_instr = '0; //stuck
+    nxt_EX_halt = '0;
     nxt_EX_pc4 = '0;
     nxt_EX_JumpReg = '0;
     nxt_EX_BEQ = '0;
@@ -297,6 +315,8 @@ always_comb begin : NXT_LOGIC
     nxt_EX_dmemstore = '0;
   end
   else if(prif.EX_EN) begin
+    nxt_EX_instr = prif.EX_instr_in;
+    
     nxt_EX_pc4 = prif.EX_pc4_in;
     nxt_EX_JumpReg = prif.EX_JumpReg_in;
     nxt_EX_BEQ = prif.EX_BEQ_in;

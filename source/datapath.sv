@@ -182,6 +182,10 @@ module datapath (
   end*/
   // EX Stage
 
+
+
+  assign prif.EX_instr_in = prif.ID_instr;
+  assign prif.ID_instr_in = prif.IF_instr;
   //Pipeline Register
   assign prif.EX_pc4_in = prif.ID_pc4;
   assign prif.EX_halt_in = prif.ID_halt;
@@ -294,4 +298,6 @@ module datapath (
   //assign dpif.dmemREN = ruif.dmemREN;
   //assign dpif.dmemWEN = ruif.dmemWEN;
   //assign dpif.dmemaddr = aluif.portout;
+
+  assign dpif.datomic = (prif.EX_instr[31:26] == LL) || (prif.EX_instr[31:26] == SC);
 endmodule

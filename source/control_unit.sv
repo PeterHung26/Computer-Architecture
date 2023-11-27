@@ -220,7 +220,10 @@ always_comb begin : CONTROL
         cuif.ALUCtr =  ALU_ADD;
         cuif.dwrite = 1'b1;
         cuif.SVsel = 2'd2;
+        
     end*/
+
+
     SW: begin
         cuif.ExtOp = 1'b1;
         cuif.ALUSrc = 1'b1;
@@ -230,6 +233,24 @@ always_comb begin : CONTROL
     HALT: begin
         cuif.halt = 1'b1;
     end 
+
+    
+    LL: begin
+        cuif.ExtOp = 1'b1;
+        cuif.ALUSrc = 1'b1;
+		cuif.ALUCtr = ALU_ADD;
+		cuif.MemtoReg = 1;
+		cuif.dread = 1;
+	end
+
+
+   	SC: begin
+        cuif.ExtOp = 1'b1;		
+		cuif.ALUSrc = 1'b1;
+        cuif.ALUCtr = ALU_ADD;
+		cuif.dwrite = 1;
+		cuif.MemtoReg = 1;
+	end    
     endcase
 end
 
