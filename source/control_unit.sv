@@ -187,43 +187,6 @@ always_comb begin : CONTROL
         cuif.RegDst = 2'b0;
         cuif.dread = 1'b1;
     end
-    /*LBU: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.MemtoReg = 1'b1;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0;
-        cuif.dread = 1'b1;
-        cuif.LDsel = 2'd1;
-    end
-    LHU: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.MemtoReg = 1'b1;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0;
-        cuif.dread = 1'b1;
-        cuif.LDsel = 2'd2;
-    end
-    SB: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.dwrite = 1'b1;
-        cuif.SVsel = 2'd1;
-    end
-    SH: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.dwrite = 1'b1;
-        cuif.SVsel = 2'd2;
-        
-    end*/
-
-
     SW: begin
         cuif.ExtOp = 1'b1;
         cuif.ALUSrc = 1'b1;
@@ -233,24 +196,24 @@ always_comb begin : CONTROL
     HALT: begin
         cuif.halt = 1'b1;
     end 
-
-    
     LL: begin
         cuif.ExtOp = 1'b1;
         cuif.ALUSrc = 1'b1;
-		cuif.ALUCtr = ALU_ADD;
-		cuif.MemtoReg = 1;
-		cuif.dread = 1;
-	end
-
-
-   	SC: begin
-        cuif.ExtOp = 1'b1;		
-		cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr = ALU_ADD;
-		cuif.dwrite = 1;
-		cuif.MemtoReg = 1;
-	end    
+        cuif.ALUCtr =  ALU_ADD;
+        cuif.MemtoReg = 1'b1;
+        cuif.RegWr = 1'b1;
+        cuif.RegDst = 2'b0;
+        cuif.dread = 1'b1;
+    end
+    SC: begin
+        cuif.ExtOp = 1'b1;
+        cuif.ALUSrc = 1'b1;
+        cuif.ALUCtr =  ALU_ADD;
+        cuif.dwrite = 1'b1;
+        cuif.MemtoReg = 1'b1;
+        cuif.RegWr = 1'b1;
+        cuif.RegDst = 2'b0;
+    end
     endcase
 end
 

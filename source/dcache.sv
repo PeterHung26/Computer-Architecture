@@ -9,7 +9,6 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     // type import
     import cpu_types_pkg::*;
     typedef enum logic [4:0] {GOOD, SNOOP_CHECK, WB1, WB2, CHECK, IRDX1, IRDX2, IRD1, IRD2, SRDX1, SRDX2, S_TO_I, Reply_RDX1, Reply_RDX2, Reply_RD1, Reply_RD2, HCHECK, HWB1, HWB2, DONE} state_t;
-    //typedef enum logic {IDLE, REPLY} cachebus_t; // state of the controller dealing with bus controller
     typedef struct packed {
         dcache_frame left;
         dcache_frame right;
@@ -17,6 +16,12 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         logic [25:0] right_snooptag;
         logic mru;
     } dcache_t;
+
+    typedef struct packed {
+        word_t link_reg;
+        logic valid;
+    } link_t;
+
     dcache_t [7:0] cache; // set up the dcache
     dcache_t nxt_cache;
     dcache_t respond_nxt_cache;
@@ -30,25 +35,18 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     logic snoop_offset;
 
     state_t nxt_state, state;
-    //logic done; // Output signal of Done state
-    //cachebus_t nxt_cstate, cstate;
-    //logic reply_done; // Signal for cache telling controller the reply is done
     logic replying;
-    //logic have; // Signal to bus controller telling it has the data
-    //logic s_i, m_s, m_i; // Signals telling cache which state to go
-    //logic nxt_s_i, nxt_m_s, nxt_m_i;
     
+    //Link Register
+    link_t link, nxt_link;
 
     logic miss;
     logic way; // indicate left is hit or right is hit
     logic cmiss;
     logic cway;
-    //logic used_most;
     logic [4:0] halt_cnt;
     logic [4:0] nxt_halt_cnt;
     logic [4:0] halt_cnt_wb;
-    //word_t hit_cnt;
-    //word_t nxt_hit_cnt;
 
     //integer i;
     integer j;
@@ -64,178 +62,20 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
     always_ff @(posedge CLK, negedge nRST) begin
         if(!nRST) begin
             state <= GOOD;
-            //cstate <= IDLE;
-            // s_i <= 0;
-            // m_i <= 0;
-            // m_s <= 0;
             halt_cnt <= '0;
-            //hit_cnt <= '0;
             cache <= '0;
+            link <= '0;
         end
         else begin
             halt_cnt <= nxt_halt_cnt;
-            //hit_cnt <= nxt_hit_cnt;
             state <= nxt_state;
-            //cstate <= nxt_cstate;
             if(replying)
                 cache[snoop_index] <= respond_nxt_cache;
             else
                 cache[index] <= nxt_cache;
-            // s_i <= nxt_s_i;
-            // m_i <= nxt_m_i;
-            // m_s <= nxt_m_s;
+            link <= nxt_link;
         end
     end
-
-    /*always_comb begin: NXT_CSTATE_AND_OUTPUT //Logic dealing with memory controller snoop in
-        nxt_cstate = cstate;
-        have = 0;
-        nxt_s_i = s_i;
-        nxt_m_s = m_s;
-        nxt_m_i = m_i;
-        replying = 0;
-        case (cstate)
-            IDLE: begin
-                if(!done) begin
-                    if(dif.ccwait) begin
-                        if(dif.ccinv) begin // BusRdX
-                            if(cmiss == 0 && cway == 0) begin
-                                if(cache[snoop_index].left.dirty) begin // Modified, M -> I
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_i = 1;
-                                end
-                                else begin // Shared, S -> I
-                                    nxt_cstate = REPLY;
-                                    have = 0;
-                                    nxt_s_i = 1;
-                                end
-                            end
-                            else if(cmiss == 0 && cway == 1) begin
-                                if(cache[snoop_index].right.dirty) begin // Modified, M -> I
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_i = 1;
-                                end
-                                else begin // Shared, S -> I
-                                    nxt_cstate = REPLY;
-                                    have = 0;
-                                    nxt_s_i = 1;
-                                end
-                            end
-                            else begin // Invalid
-                                nxt_cstate = IDLE;
-                                have = 0;
-                            end
-                        end
-                        else begin // BusRd
-                            if(cmiss == 0 && cway == 0) begin
-                                if(cache[snoop_index].left.dirty) begin // Modified, M -> S
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_s = 1;
-                                end
-                                else begin // Shared, S -> S
-                                    nxt_cstate = IDLE;
-                                    have = 0;
-                                end
-                            end
-                            else if(cmiss == 0 && cway == 1) begin
-                                if(cache[snoop_index].right.dirty) begin // Modified, M -> S
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_s = 1;
-                                end
-                                else begin // Shared, S -> S
-                                    nxt_cstate = IDLE;
-                                    have = 0;
-                                end
-                            end
-                            else begin // Invalid
-                                nxt_cstate = IDLE;
-                                have = 0;
-                            end
-                        end
-                    end
-                    else
-                        nxt_cstate = IDLE;
-                    end
-                    if(dif.ccwait) begin
-                        if(dif.ccinv) begin // BusRdX
-                            if(cmiss == 0 && cway == 0) begin
-                                if(cache[snoop_index].left.dirty) begin // Modified, M -> I
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_i = 1;
-                                end
-                                else begin // Shared, S -> I
-                                    nxt_cstate = REPLY;
-                                    have = 0;
-                                    nxt_s_i = 1;
-                                end
-                            end
-                            else if(cmiss == 0 && cway == 1) begin
-                                if(cache[snoop_index].right.dirty) begin // Modified, M -> I
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_i = 1;
-                                end
-                                else begin // Shared, S -> I
-                                    nxt_cstate = REPLY;
-                                    have = 0;
-                                    nxt_s_i = 1;
-                                end
-                            end
-                            else begin // Invalid
-                                nxt_cstate = IDLE;
-                                have = 0;
-                            end
-                        end
-                        else begin // BusRd
-                            if(cmiss == 0 && cway == 0) begin
-                                if(cache[snoop_index].left.dirty) begin // Modified, M -> S
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_s = 1;
-                                end
-                                else begin // Shared, S -> S
-                                    nxt_cstate = IDLE;
-                                    have = 0;
-                                end
-                            end
-                            else if(cmiss == 0 && cway == 1) begin
-                                if(cache[snoop_index].right.dirty) begin // Modified, M -> S
-                                    nxt_cstate = REPLY;
-                                    have = 1;
-                                    nxt_m_s = 1;
-                                end
-                                else begin // Shared, S -> S
-                                    nxt_cstate = IDLE;
-                                    have = 0;
-                                end
-                            end
-                            else begin // Invalid
-                                nxt_cstate = IDLE;
-                                have = 0;
-                            end
-                        end
-                    end
-                    else
-                        nxt_cstate = IDLE;
-            end
-            REPLY: begin
-                replying = 1;
-                if(reply_done) begin
-                    nxt_cstate = IDLE;
-                    nxt_s_i = 1'b0;
-                    nxt_m_i = 1'b0;
-                    nxt_m_s = 1'b0;
-                end
-                else
-                    nxt_cstate = REPLY;
-            end
-        endcase
-    end*/
 
     always_comb begin: NXT_STATE
         nxt_state = state;
@@ -244,6 +84,34 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
             GOOD: begin
                 if(dif.ccwait) begin
                     nxt_state = SNOOP_CHECK;
+                end
+                else if(dcif.dmemWEN && dcif.datomic) begin
+                    if(!link.valid || (dcif.dmemaddr != link.link_reg)) begin // Test and Set is invalidated, dmemload return 0 (fail)
+                        nxt_state = GOOD;
+                    end
+                    else begin
+                        if(miss) begin
+                            nxt_state = CHECK;
+                        end
+                        else begin
+                            if(way == 0) begin
+                                if(!cache[index].left.dirty) begin // Shared, S -> M
+                                    nxt_state = SRDX1;
+                                end
+                                else begin
+                                    nxt_state = GOOD;
+                                end
+                            end
+                            else begin
+                                if(!cache[index].right.dirty) begin // Shared, S -> M
+                                    nxt_state = SRDX1;
+                                end
+                                else begin
+                                    nxt_state = GOOD;
+                                end
+                            end
+                        end
+                    end
                 end
                 else if(dcif.halt == 1'b1) begin
                     nxt_state = HCHECK;
@@ -470,7 +338,11 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 end
             end
             HWB1: begin
-                if(dif.dwait)
+                if(dif.ccwait) begin
+                    nxt_state = SNOOP_CHECK;
+                    nxt_halt_cnt = halt_cnt - 1;
+                end
+                else if(dif.dwait)
                     nxt_state = HWB1;
                 else
                     nxt_state = HWB2;
@@ -539,12 +411,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
         nxt_cache.mru = cache[index].mru;
         nxt_cache.left_snooptag = cache[index].left_snooptag;
         nxt_cache.right_snooptag = cache[index].right_snooptag;
-        //nxt_halt_cnt = halt_cnt;
-        //nxt_hit_cnt = hit_cnt;
         halt_cnt_wb = halt_cnt - 1;
-        // reply_done = 1'b0;
         replying = 0;
-        //done = 1'b0;
+        nxt_link.link_reg = link.link_reg;
+        nxt_link.valid = link.valid;
         case (state)
             GOOD: begin
                 if(miss == 0) begin
@@ -569,35 +439,96 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                         end
                         dcif.dhit = 1'b1;
                         //nxt_hit_cnt = hit_cnt + 1;
+                        if(dcif.datomic) begin
+                            nxt_link.link_reg = dcif.dmemaddr;
+                            nxt_link.valid = 1'b1;
+                        end
                     end
                     else if(dcif.dmemWEN) begin
-                        if(way == 0) begin
-                            if(cache[index].left.dirty) begin // M -> M
-                                if(offset == 1'b0) begin
-                                    nxt_cache.left.data[0] = dcif.dmemstore;
+                        if(dcif.datomic) begin
+                            if(link.valid && (link.link_reg == dcif.dmemaddr)) begin
+                                if(way == 0) begin
+                                    if(cache[index].left.dirty) begin // M -> M
+                                        if(offset == 1'b0) begin
+                                            nxt_cache.left.data[0] = dcif.dmemstore;
+                                        end
+                                        else begin
+                                            nxt_cache.left.data[1] = dcif.dmemstore;
+                                        end
+                                        nxt_cache.left.dirty = 1'b1;
+                                        nxt_cache.mru = 0;
+                                        dcif.dhit = 1'b1;
+                                        dcif.dmemload = 32'b1;
+                                        nxt_link.valid = 1'b0;
+                                        nxt_link.link_reg = '0;
+                                    end
                                 end
                                 else begin
-                                    nxt_cache.left.data[1] = dcif.dmemstore;
+                                    if(cache[index].right.dirty) begin // M -> M
+                                        if(offset == 1'b0) begin
+                                            nxt_cache.right.data[0] = dcif.dmemstore;
+                                        end
+                                        else begin
+                                            nxt_cache.right.data[1] = dcif.dmemstore;
+                                        end
+                                        nxt_cache.right.dirty = 1'b1;
+                                        nxt_cache.mru = 1;
+                                        dcif.dhit = 1'b1;
+                                        dcif.dmemload = 32'b1;
+                                        nxt_link.valid = 1'b0;
+                                        nxt_link.link_reg = '0;
+                                    end
                                 end
-                                nxt_cache.left.dirty = 1'b1;
-                                nxt_cache.mru = 0;
+                            end
+                            else begin // Address not match but found the data in dcache
                                 dcif.dhit = 1'b1;
+                                dcif.dmemload = 32'b0;
                             end
                         end
                         else begin
-                            if(cache[index].right.dirty) begin // M -> M
-                                if(offset == 1'b0) begin
-                                    nxt_cache.right.data[0] = dcif.dmemstore;
+                            if(way == 0) begin
+                                if(cache[index].left.dirty) begin // M -> M
+                                    if(offset == 1'b0) begin
+                                        nxt_cache.left.data[0] = dcif.dmemstore;
+                                    end
+                                    else begin
+                                        nxt_cache.left.data[1] = dcif.dmemstore;
+                                    end
+                                    nxt_cache.left.dirty = 1'b1;
+                                    nxt_cache.mru = 0;
+                                    dcif.dhit = 1'b1;
+                                    if(dcif.dmemaddr == link.link_reg) begin // Unlock
+                                        nxt_link.valid = 1'b0;
+                                        nxt_link.link_reg = '0;
+                                    end
                                 end
-                                else begin
-                                    nxt_cache.right.data[1] = dcif.dmemstore;
+                            end
+                            else begin
+                                if(cache[index].right.dirty) begin // M -> M
+                                    if(offset == 1'b0) begin
+                                        nxt_cache.right.data[0] = dcif.dmemstore;
+                                    end
+                                    else begin
+                                        nxt_cache.right.data[1] = dcif.dmemstore;
+                                    end
+                                    nxt_cache.right.dirty = 1'b1;
+                                    nxt_cache.mru = 1;
+                                    dcif.dhit = 1'b1;
+                                    if(dcif.dmemaddr == link.link_reg) begin // Unlock
+                                        nxt_link.valid = 1'b0;
+                                        nxt_link.link_reg = '0;
+                                    end
                                 end
-                                nxt_cache.right.dirty = 1'b1;
-                                nxt_cache.mru = 1;
-                                dcif.dhit = 1'b1;
                             end
                         end
-                        //nxt_hit_cnt = hit_cnt + 1;
+                    end
+                end
+                else begin
+                    if(dcif.datomic && dcif.dmemWEN) begin
+                        if(!link.valid || (link.link_reg != dcif.dmemaddr)) begin // Test and Set is failed
+                            dcif.dhit = 1'b1;
+                            dcif.dmemload = 32'b0;
+                        end
                     end
                 end
                 /*else begin
@@ -731,6 +662,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                 else begin
                     respond_nxt_cache.right.valid = 1'b0;
                 end
+                if(dif.ccsnoopaddr == link.link_reg) begin
+                    nxt_link.valid = 1'b0;
+                    nxt_link.link_reg = 32'b0;
+                end
                 //reply_done = 1'b1;
             end
             Reply_RDX1: begin
@@ -764,6 +699,10 @@ module dcache(input logic CLK, nRST, datapath_cache_if.dcache dcif, caches_if.dc
                     else
                         respond_nxt_cache.right.valid = 1'b0;
                     //reply_done = 1'b1;
+                    if(dif.ccsnoopaddr == link.link_reg) begin
+                        nxt_link.valid = 1'b0;
+                        nxt_link.link_reg = 32'b0;
+                    end
                 end
             end
             Reply_RD1: begin

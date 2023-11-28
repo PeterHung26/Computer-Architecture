@@ -34,6 +34,7 @@ logic [4:0]   nxt_ID_rd;
 logic [15:0]  nxt_ID_imm16;
 logic         nxt_ID_halt;
 logic         nxt_ID_JR;
+opcode_t      nxt_ID_opcode;
 //EX
 logic [31:0]  nxt_EX_pc4;
 logic         nxt_EX_JumpReg;
@@ -49,6 +50,7 @@ logic [31:0]  nxt_EX_ext_imm_16;
 logic [4:0]   nxt_EX_wsel;
 logic         nxt_EX_halt;
 logic [31:0]  nxt_EX_dmemstore;
+opcode_t      nxt_EX_opcode;
 //MEM
 logic [31:0]  nxt_MEM_pc4;
 logic         nxt_MEM_JumpReg;
@@ -59,9 +61,6 @@ logic [31:0]  nxt_MEM_portout;
 logic [4:0]   nxt_MEM_wsel;
 logic         nxt_MEM_halt;
 
-logic [31:0]  nxt_EX_instr;
-logic [31:0]  nxt_ID_instr;
-
 always_ff @ (posedge CLK, negedge nRST) 
 begin
   if(!nRST) begin
@@ -69,8 +68,6 @@ begin
     prif.IF_instr <= '0;
     prif.IF_pc4 <= '0;
     //ID
-    prif.ID_instr <= '0;
-
     prif.ID_pc4 <= '0;
     prif.ID_RegDst <= '0;
     prif.ID_RegWrite <= '0;
@@ -92,9 +89,8 @@ begin
     prif.ID_imm16 <= '0;
     prif.ID_halt <= '0;
     prif.ID_JR <= '0;
+    prif.ID_opcode <= RTYPE;
     //EX
-    prif.EX_instr <= '0;
-
     prif.EX_pc4 <= '0;
     prif.EX_JumpReg <= '0;
     prif.EX_BEQ <= '0;
@@ -109,6 +105,7 @@ begin
     prif.EX_wsel <= '0;
     prif.EX_halt <= '0;
     prif.EX_dmemstore <= '0;
+    prif.EX_opcode <= RTYPE;
     //MEM
     prif.MEM_pc4 <= '0;
     prif.MEM_JumpReg <= '0;
@@ -124,8 +121,6 @@ begin
     prif.IF_instr <= nxt_IF_instr;
     prif.IF_pc4 <= nxt_IF_pc4;
     //ID
-    prif.ID_instr <= nxt_ID_instr;
-
     prif.ID_pc4 <= nxt_ID_pc4;
     prif.ID_RegDst <= nxt_ID_RegDst;
     prif.ID_RegWrite <= nxt_ID_RegWrite;
@@ -147,9 +142,8 @@ begin
     prif.ID_imm16 <= nxt_ID_imm16;
     prif.ID_halt <= nxt_ID_halt;
     prif.ID_JR <= nxt_ID_JR;
+    prif.ID_opcode <= nxt_ID_opcode;
     //EX
-    prif.EX_instr <= nxt_EX_instr;
-
     prif.EX_pc4 <= nxt_EX_pc4;
     prif.EX_JumpReg <= nxt_EX_JumpReg;
     prif.EX_BEQ <= nxt_EX_BEQ;
@@ -164,6 +158,7 @@ begin
     prif.EX_wsel <= nxt_EX_wsel;
     prif.EX_halt <= nxt_EX_halt;
     prif.EX_dmemstore <= nxt_EX_dmemstore;
+    prif.EX_opcode <= nxt_EX_opcode;
     //MEM
     prif.MEM_pc4 <= nxt_MEM_pc4;
     prif.MEM_JumpReg <= nxt_MEM_JumpReg;
@@ -181,8 +176,6 @@ always_comb begin : NXT_LOGIC
   nxt_IF_instr = prif.IF_instr;
   nxt_IF_pc4 = prif.IF_pc4;
   //ID
-  nxt_ID_instr = prif.ID_instr;
-
   nxt_ID_pc4 = prif.ID_pc4;
   nxt_ID_RegDst = prif.ID_RegDst;
   nxt_ID_RegWrite = prif.ID_RegWrite;
@@ -204,9 +197,8 @@ always_comb begin : NXT_LOGIC
   nxt_ID_imm16 = prif.ID_imm16;
   nxt_ID_halt = prif.ID_halt;
   nxt_ID_JR = prif.ID_JR;
+  nxt_ID_opcode = prif.ID_opcode;
   //EX
-  nxt_EX_instr = prif.EX_instr;
-
   nxt_EX_pc4 = prif.EX_pc4;
   nxt_EX_JumpReg = prif.EX_JumpReg;
   nxt_EX_BEQ = prif.EX_BEQ;
@@ -221,6 +213,7 @@ always_comb begin : NXT_LOGIC
   nxt_EX_wsel = prif.EX_wsel;
   nxt_EX_halt = prif.EX_halt;
   nxt_EX_dmemstore = prif.EX_dmemstore;
+  nxt_EX_opcode = prif.EX_opcode;
   //MEM
   nxt_MEM_pc4 = prif.MEM_pc4;
   nxt_MEM_JumpReg = prif.MEM_JumpReg;
@@ -244,8 +237,7 @@ always_comb begin : NXT_LOGIC
     if(prif.halt)
       nxt_ID_halt = prif.ID_halt_in;
     else
-    // nxt_ID_instr = '0; //stuck
-    nxt_ID_halt = '0;
+      nxt_ID_halt = '0;
     nxt_ID_pc4 = '0;
     nxt_ID_RegDst = '0;
     nxt_ID_RegWrite = '0;
@@ -267,9 +259,9 @@ always_comb begin : NXT_LOGIC
     nxt_ID_imm16 = '0;
     //nxt_ID_halt = '0;
     nxt_ID_JR = '0;
+    nxt_ID_opcode = RTYPE;
   end
   else if(prif.ID_EN) begin
-    nxt_ID_instr = prif.ID_instr_in;
     nxt_ID_pc4 = prif.ID_pc4_in;
     nxt_ID_RegDst = prif.ID_RegDst_in;
     nxt_ID_RegWrite = prif.ID_RegWrite_in;
@@ -291,14 +283,14 @@ always_comb begin : NXT_LOGIC
     nxt_ID_imm16 = prif.ID_imm16_in;
     nxt_ID_halt = prif.ID_halt_in;
     nxt_ID_JR = prif.ID_JR_in;
+    nxt_ID_opcode = prif.ID_opcode_in;
   end
   //EX
   if(prif.EX_FLUSH) begin
     if(prif.halt)
       nxt_EX_halt = prif.EX_halt_in;
     else
-    // nxt_EX_instr = '0; //stuck
-    nxt_EX_halt = '0;
+      nxt_EX_halt = '0;
     nxt_EX_pc4 = '0;
     nxt_EX_JumpReg = '0;
     nxt_EX_BEQ = '0;
@@ -313,10 +305,9 @@ always_comb begin : NXT_LOGIC
     nxt_EX_wsel = '0;
     //nxt_EX_halt = '0;
     nxt_EX_dmemstore = '0;
+    nxt_EX_opcode = RTYPE;
   end
   else if(prif.EX_EN) begin
-    nxt_EX_instr = prif.EX_instr_in;
-    
     nxt_EX_pc4 = prif.EX_pc4_in;
     nxt_EX_JumpReg = prif.EX_JumpReg_in;
     nxt_EX_BEQ = prif.EX_BEQ_in;
@@ -331,6 +322,7 @@ always_comb begin : NXT_LOGIC
     nxt_EX_wsel = prif.EX_wsel_in;
     nxt_EX_halt = prif.EX_halt_in;
     nxt_EX_dmemstore = prif.EX_dmemstore_in;
+    nxt_EX_opcode = prif.EX_opcode_in;
   end
   //MEM
   if(prif.MEM_FLUSH) begin

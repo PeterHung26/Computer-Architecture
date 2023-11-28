@@ -146,6 +146,7 @@ module datapath (
   assign prif.ID_rt_in = prif.IF_instr[20:16]; // rt
   assign prif.ID_rd_in = prif.IF_instr[15:11]; // rt
   assign prif.ID_imm16_in = prif.IF_instr[15:0]; // imm16
+  assign prif.ID_opcode_in = opcode_t'(prif.IF_instr[31:26]);
 
   /*always_comb begin : RF_MUX
     if(cuif.RegDst == 2'd0)
@@ -182,10 +183,6 @@ module datapath (
   end*/
   // EX Stage
 
-
-
-  assign prif.EX_instr_in = prif.ID_instr;
-  assign prif.ID_instr_in = prif.IF_instr;
   //Pipeline Register
   assign prif.EX_pc4_in = prif.ID_pc4;
   assign prif.EX_halt_in = prif.ID_halt;
@@ -200,6 +197,7 @@ module datapath (
   assign prif.EX_portout_in = aluif.portout;
   assign prif.EX_ext_imm_16_in = exif.ext_imm;
   assign prif.EX_dmemstore_in = forwb;
+  assign prif.EX_opcode_in = prif.ID_opcode;
   always_comb begin : WSEL
     if(prif.ID_RegDst == 2'd0)
       prif.EX_wsel_in = prif.ID_rt; // rt
@@ -291,13 +289,11 @@ module datapath (
   assign rfif.wdat = dout2;
 
   // Data path output
-  //assign dpif.datomic = ruif.datomic;
   assign dpif.halt = prif.MEM_halt;
+  assign dpif.datomic = ((prif.EX_opcode == LL) || (prif.EX_opcode == SC));
   //assign dpif.imemREN = ruif.imemREN; // Update
   //assign dpif.imemaddr = pcif.pcaddr;
   //assign dpif.dmemREN = ruif.dmemREN;
   //assign dpif.dmemWEN = ruif.dmemWEN;
   //assign dpif.dmemaddr = aluif.portout;
-
-  assign dpif.datomic = (prif.EX_instr[31:26] == LL) || (prif.EX_instr[31:26] == SC);
 endmodule
