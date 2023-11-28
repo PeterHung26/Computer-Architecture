@@ -36,6 +36,7 @@ interface pipeline_register_if;
   logic [15:0]  ID_imm16;
   logic         ID_halt;
   logic         ID_JR;
+  opcode_t      ID_opcode;
 
   logic [31:0]  ID_pc4_in;
   logic [1:0]   ID_RegDst_in;
@@ -58,7 +59,7 @@ interface pipeline_register_if;
   logic [15:0]  ID_imm16_in;
   logic         ID_halt_in;
   logic         ID_JR_in;
-
+  opcode_t      ID_opcode_in;
 
  
 
@@ -77,6 +78,7 @@ interface pipeline_register_if;
   logic [4:0]   EX_wsel;
   logic         EX_halt;
   logic [31:0]  EX_dmemstore;
+  opcode_t      EX_opcode;
 
   logic [31:0]  EX_pc4_in;
   logic         EX_JumpReg_in;
@@ -92,6 +94,7 @@ interface pipeline_register_if;
   logic [4:0]   EX_wsel_in;
   logic         EX_halt_in;
   logic [31:0]  EX_dmemstore_in;
+  opcode_t      EX_opcode_in;
 
   // MEM/WB
   logic [31:0]  MEM_pc4;
@@ -125,34 +128,26 @@ interface pipeline_register_if;
 
   logic         halt;
 
-
-  logic [31:0]  ID_instr;
-  logic [31:0]  EX_instr;
-  
-  logic [31:0]  ID_instr_in;
-  logic [31:0]  EX_instr_in;
-
-
   modport pr (
-  input IF_instr_in, IF_pc4_in, 
-        ID_pc4_in, ID_RegDst_in, ID_RegWrite_in, ID_MemtoReg_in, ID_dread_in, ID_dwrite_in, ID_BEQ_in, ID_BNE_in, ID_JumpReg_in, ID_ExtOP_in, ID_ALUSrc_in, ID_LUI_in, ID_ALUCtr_in, ID_rdat1_in, ID_rdat2_in, ID_rs_in, ID_rt_in, ID_rd_in, ID_imm16_in, ID_halt_in, ID_JR_in, 
-        EX_pc4_in, EX_JumpReg_in, EX_BEQ_in, EX_BNE_in, EX_MemtoReg_in, EX_RegWrite_in, EX_dread_in, EX_dwrite_in, EX_zero_in, EX_portout_in, EX_ext_imm_16_in, EX_wsel_in, EX_halt_in, EX_dmemstore_in, 
+  input IF_instr_in, IF_pc4_in,
+        ID_pc4_in, ID_RegDst_in, ID_RegWrite_in, ID_MemtoReg_in, ID_dread_in, ID_dwrite_in, ID_BEQ_in, ID_BNE_in, ID_JumpReg_in, ID_ExtOP_in, ID_ALUSrc_in, ID_LUI_in, ID_ALUCtr_in, ID_rdat1_in, ID_rdat2_in, ID_rs_in, ID_rt_in, ID_rd_in, ID_imm16_in, ID_halt_in, ID_JR_in, ID_opcode_in, 
+        EX_pc4_in, EX_JumpReg_in, EX_BEQ_in, EX_BNE_in, EX_MemtoReg_in, EX_RegWrite_in, EX_dread_in, EX_dwrite_in, EX_zero_in, EX_portout_in, EX_ext_imm_16_in, EX_wsel_in, EX_halt_in, EX_dmemstore_in, EX_opcode_in, 
         MEM_pc4_in, MEM_JumpReg_in, MEM_MemtoReg_in, MEM_RegWrite_in, MEM_dmemload_in, MEM_portout_in, MEM_wsel_in, MEM_halt_in, 
-        IF_FLUSH, ID_FLUSH, EX_FLUSH, MEM_FLUSH, IF_EN, ID_EN, EX_EN, MEM_EN, halt, ID_instr_in, EX_instr_in,
+        IF_FLUSH, ID_FLUSH, EX_FLUSH, MEM_FLUSH, IF_EN, ID_EN, EX_EN, MEM_EN, halt, 
 
   output IF_instr, IF_pc4,
-        ID_pc4, ID_RegDst, ID_RegWrite, ID_MemtoReg, ID_dread, ID_dwrite, ID_BEQ, ID_BNE, ID_JumpReg, ID_ExtOP, ID_ALUSrc, ID_LUI, ID_ALUCtr, ID_rdat1, ID_rdat2, ID_rs, ID_rt, ID_rd, ID_imm16, ID_halt, ID_JR, 
-        EX_pc4, EX_JumpReg, EX_BEQ, EX_BNE, EX_MemtoReg, EX_RegWrite, EX_dread, EX_dwrite, EX_zero, EX_portout, EX_ext_imm_16, EX_wsel, EX_halt, EX_dmemstore, 
-        MEM_pc4, MEM_JumpReg, MEM_MemtoReg, MEM_RegWrite, MEM_dmemload, MEM_portout, MEM_wsel, MEM_halt, ID_instr, EX_instr
+        ID_pc4, ID_RegDst, ID_RegWrite, ID_MemtoReg, ID_dread, ID_dwrite, ID_BEQ, ID_BNE, ID_JumpReg, ID_ExtOP, ID_ALUSrc, ID_LUI, ID_ALUCtr, ID_rdat1, ID_rdat2, ID_rs, ID_rt, ID_rd, ID_imm16, ID_halt, ID_JR, ID_opcode, 
+        EX_pc4, EX_JumpReg, EX_BEQ, EX_BNE, EX_MemtoReg, EX_RegWrite, EX_dread, EX_dwrite, EX_zero, EX_portout, EX_ext_imm_16, EX_wsel, EX_halt, EX_dmemstore, EX_opcode, 
+        MEM_pc4, MEM_JumpReg, MEM_MemtoReg, MEM_RegWrite, MEM_dmemload, MEM_portout, MEM_wsel, MEM_halt
   );
   modport tb (
   input IF_instr, IF_pc4,
-        ID_pc4, ID_RegDst, ID_RegWrite, ID_MemtoReg, ID_dread, ID_dwrite, ID_BEQ, ID_BNE, ID_JumpReg, ID_ExtOP, ID_ALUSrc, ID_LUI, ID_ALUCtr, ID_rdat1, ID_rdat2, ID_rs, ID_rt, ID_rd, ID_imm16, ID_halt, ID_JR, 
-        EX_pc4, EX_JumpReg, EX_BEQ, EX_BNE, EX_MemtoReg, EX_RegWrite, EX_dread, EX_dwrite, EX_zero, EX_portout, EX_ext_imm_16, EX_wsel, EX_halt, EX_dmemstore, 
+        ID_pc4, ID_RegDst, ID_RegWrite, ID_MemtoReg, ID_dread, ID_dwrite, ID_BEQ, ID_BNE, ID_JumpReg, ID_ExtOP, ID_ALUSrc, ID_LUI, ID_ALUCtr, ID_rdat1, ID_rdat2, ID_rs, ID_rt, ID_rd, ID_imm16, ID_halt, ID_JR, ID_opcode, 
+        EX_pc4, EX_JumpReg, EX_BEQ, EX_BNE, EX_MemtoReg, EX_RegWrite, EX_dread, EX_dwrite, EX_zero, EX_portout, EX_ext_imm_16, EX_wsel, EX_halt, EX_dmemstore, EX_opcode, 
         MEM_pc4, MEM_JumpReg, MEM_MemtoReg, MEM_RegWrite, MEM_dmemload, MEM_portout, MEM_wsel, MEM_halt, 
   output IF_instr_in, IF_pc4_in,
-        ID_pc4_in, ID_RegDst_in, ID_RegWrite_in, ID_MemtoReg_in, ID_dread_in, ID_dwrite_in, ID_BEQ_in, ID_BNE_in, ID_JumpReg_in, ID_ExtOP_in, ID_ALUSrc_in, ID_LUI_in, ID_ALUCtr_in, ID_rdat1_in, ID_rdat2_in, ID_rs_in, ID_rt_in, ID_rd_in, ID_imm16_in, ID_halt_in, ID_JR_in, 
-        EX_pc4_in, EX_JumpReg_in, EX_BEQ_in, EX_BNE_in, EX_MemtoReg_in, EX_RegWrite_in, EX_dread_in, EX_dwrite_in, EX_zero_in, EX_portout_in, EX_ext_imm_16_in, EX_wsel_in, EX_halt_in, EX_dmemstore_in, 
+        ID_pc4_in, ID_RegDst_in, ID_RegWrite_in, ID_MemtoReg_in, ID_dread_in, ID_dwrite_in, ID_BEQ_in, ID_BNE_in, ID_JumpReg_in, ID_ExtOP_in, ID_ALUSrc_in, ID_LUI_in, ID_ALUCtr_in, ID_rdat1_in, ID_rdat2_in, ID_rs_in, ID_rt_in, ID_rd_in, ID_imm16_in, ID_halt_in, ID_JR_in, ID_opcode_in, 
+        EX_pc4_in, EX_JumpReg_in, EX_BEQ_in, EX_BNE_in, EX_MemtoReg_in, EX_RegWrite_in, EX_dread_in, EX_dwrite_in, EX_zero_in, EX_portout_in, EX_ext_imm_16_in, EX_wsel_in, EX_halt_in, EX_dmemstore_in, EX_opcode_in, 
         MEM_pc4_in, MEM_JumpReg_in, MEM_MemtoReg_in, MEM_RegWrite_in, MEM_dmemload_in, MEM_portout_in, MEM_wsel_in, MEM_halt_in, 
         IF_FLUSH, ID_FLUSH, EX_FLUSH, MEM_FLUSH, IF_EN, ID_EN, EX_EN, MEM_EN, halt
   );
