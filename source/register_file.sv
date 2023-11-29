@@ -1,64 +1,53 @@
+`include "cpu_types_pkg.vh"
 `include "register_file_if.vh"
-
-module register_file(
-    input logic clk,
-    input logic n_rst,
-    register_file_if.rf rfif
+module register_file
+(
+  input logic CLK, nRST, 
+  register_file_if.rf rfif
 );
 
-logic [31:0][31:0] regfile;
-logic [31:0][31:0] nxt_regfile;
+import cpu_types_pkg::*;
+/*
+word_t  [31:0] regs ;
+word_t  [31:0] regsn ;
 
-genvar i;
-generate
-    for(i = 0; i < 32; i++) begin : FORLOOP
-        always_ff @( negedge clk, negedge n_rst ) begin : REGISTER_FILE
-            if(!n_rst) begin
-                regfile[i] <= '0;
-            end
-            else begin
-                regfile[i] <= nxt_regfile[i];
-            end
-        end
-    end
-endgenerate
+always_ff @(posedge CLK, negedge nRST) begin
+  if(!nRST) 
+    regs <= '0;
+  else 
+    regs <= regsn;
+end 
 
-int j;
-always_comb begin : READ1
-    j = 0;
-    rfif.rdat1 = '0;
-    for(j = 0; j < 32; j++) begin
-        if(rfif.rsel1 == j) begin
-            rfif.rdat1 = regfile[j];
-        end
-    end
-end
+always_comb begin
+  regsn = regs;
+  if(rfif.WEN && rfif.wsel != 0)
+    regsn[rfif.wsel] = rfif.wdat;
+end 
 
-int k;
-always_comb begin : READ2
-    k = 0;
-    rfif.rdat2 = '0;
-    for(k = 0; k < 32; k++) begin
-        if(rfif.rsel2 == k) begin
-            rfif.rdat2 = regfile[k];
-        end
-    end
-end
+assign  rfif.rdat1 = regs[rfif.rsel1];
+assign  rfif.rdat2 = regs[rfif.rsel2];
 
-int l;
-always_comb begin : NXT_REGFILE
-    l = 0;
-    nxt_regfile = regfile;
-    if(rfif.WEN) begin
-        for(l = 0; l < 32; l++) begin
-            if((rfif.wsel == l) && (l == 0)) begin
-                nxt_regfile[l] = '0;
-            end
-            else if(rfif.wsel == l) begin
-                nxt_regfile[l] = rfif.wdat;
-            end
-        end
+  */
+
+
+  word_t [31:0] regs ;
+  
+  always_ff @(posedge CLK, negedge nRST)
+  begin
+    if(!nRST)
+    begin
+      regs <= '0; // {32{32'b0}} or '{'0} if use unpacked
     end
-end
+    else if(rfif.WEN)
+      regs[rfif.wsel] <= (rfif.wsel == 0) ? 32'h00000000 : rfif.wdat;
+  end
+
+assign  rfif.rdat1 = (rfif.WEN && rfif.wsel == rfif.rsel1) ? rfif.wdat : regs[rfif.rsel1];
+assign  rfif.rdat2 = (rfif.WEN && rfif.wsel == rfif.rsel2) ? rfif.wdat : regs[rfif.rsel2];
+
+
 
 endmodule
+
+
+

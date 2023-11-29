@@ -1,86 +1,89 @@
 `include "hazard_unit_if.vh"
 `include "cpu_types_pkg.vh"
-
-module hazard_unit(
-    input logic CLK, nRST, 
-    hazard_unit_if.hu huif
+module hazard_unit
+(
+  hazard_unit_if huif
 );
+  import cpu_types_pkg::*;
+    
 
-import cpu_types_pkg::*;
 
-//logic nxt_iREN;
 
-always_comb begin : HAZARD
-    //nxt_iREN = 1'b1;
-    huif.iREN = 1'b1;
-    huif.IF_EN = 1'b1;
-    huif.ID_EN = 1'b1;
-    huif.EX_EN = 1'b1;
-    huif.MEM_EN = 1'b1;
-    huif.IF_FLUSH = 1'b0;
-    huif.ID_FLUSH = 1'b0;
-    huif.EX_FLUSH = 1'b0;
-    huif.MEM_FLUSH = 1'b0;
-    huif.PC_EN = 1'b1;
-    huif.pr_halt = 1'b0;
-    if(huif.PCSrc) begin // Branch at MEM stage
-        huif.EX_FLUSH = 1'b1;
-        huif.ID_FLUSH = 1'b1;
-        huif.IF_FLUSH = 1'b1;
-    end
-    else if((huif.EX_dread || huif.EX_dwrite) && !huif.dhit) begin
-        huif.PC_EN = 1'b0;
-        huif.IF_EN = 1'b0;
-        huif.ID_EN = 1'b0;
-        huif.EX_EN = 1'b0;
-        huif.MEM_EN = 1'b0;
-    end
-    else if(huif.ID_JR) begin
-        huif.ID_FLUSH = 1'b1;
-        huif.IF_FLUSH = 1'b1;
-    end
-    else if(huif.ID_dread && ((huif.ID_rt == huif.IF_rs) || (huif.ID_rt == huif.IF_rt))) begin // LW at EXE stage
-        if(huif.cu_Jump) begin // Jump at decode stage
-            huif.IF_FLUSH = 1'b1;
-        end
-        else if(huif.cu_halt) begin // Halt at decode stage
-            //nxt_iREN = 1'b0;
-            huif.iREN = 1'b0;
-            huif.IF_EN = 1'b0;
-            huif.ID_FLUSH = 1'b1;
-            huif.PC_EN = 1'b0;
-            huif.pr_halt = 1'b1;
-        end
-        else begin
-            huif.ID_FLUSH = 1'b1;
-            huif.IF_EN = 1'b0;
-            huif.PC_EN = 1'b0;
-        end
-    end
-    else if(huif.cu_Jump) begin //Jump and JAL control flow hazard (found at DCD stage)
-        huif.IF_FLUSH = 1'b1;
-    end
-    else if(huif.cu_halt) begin // Halt
-        //nxt_iREN = 1'b0;
-        huif.iREN = 1'b0;
-        huif.IF_EN = 1'b0;
-        huif.ID_FLUSH = 1'b1;
-        huif.PC_EN = 1'b0;
-        huif.pr_halt = 1'b1;
-    end
-    else if(!huif.ihit) begin
-        huif.PC_EN = 1'b0;
-        huif.IF_FLUSH = 1'b1;
-    end
-end
+  always_comb begin: FORWARDING_LOGIC
+    huif.ForwardA = '0;
+    huif.ForwardB = '0;
+    // EXMEM is first order.
+    // If I type, rt doesn't matter
+    if(huif.EXMEM_RegWrite  &&  huif.EXMEM_rd!=0  &&  huif.EXMEM_rd==huif.IDEX_rs)
+      huif.ForwardA = 2'b10;
+    else if(huif.MEMWB_RegWrite  &&  huif.MEMWB_rd!=0  &&  huif.MEMWB_rd==huif.IDEX_rs)
+      huif.ForwardA = 2'b01;
 
-/*always_ff @(posedge CLK, negedge nRST) begin
-    if(!nRST) begin
-        huif.iREN <= 1'b1;
-    end
-    else begin
-        huif.iREN <= nxt_iREN;
-    end
-end*/
+    if(huif.EXMEM_RegWrite  &&  huif.EXMEM_rd!=0  &&  huif.EXMEM_rd==huif.IDEX_rt)
+      huif.ForwardB = 2'b10;
+    else if(huif.MEMWB_RegWrite  &&  huif.MEMWB_rd!=0  &&  huif.MEMWB_rd==huif.IDEX_rt)
+      huif.ForwardB = 2'b01;
+  end
 
+
+  assign huif.ForwardSW = (huif.EXMEM_dWEN &&  huif.MEMWB_RegWrite       &&  huif.MEMWB_rd      == huif.EXMEM_rt) ? 2'b10 :
+                          (huif.EXMEM_dWEN &&  huif.MEMWB_RegWrite_Prev  &&  huif.MEMWB_rd_Prev == huif.EXMEM_rt) ? 2'b01 : 2'b00;
+  /*
+  always_comb begin: RegWrite_SW_LOGIC
+    huif.ForwardSW = '0;
+    //if(huif.IDEX_dWEN  &&  huif.EXMEM_RegWrite  &&  huif.EXMEM_rd == huif.IFID_rt  &&  huif.EXMEM_dREN)
+      //huif.ForwardSW = 2'b11;
+    if     (huif.IFID_dWEN &&  huif.IDEX_RegWrite  &&  huif.IDEX_rd == huif.IFID_rt)
+      huif.ForwardSW = 2'b01;
+    else if(huif.IFID_dWEN &&  huif.EXMEM_RegWrite  &&  huif.EXMEM_rd == huif.IFID_rt)
+      huif.ForwardSW = 2'b10;
+    
+  end
+  */
+
+  always_comb begin: STALL_LW
+    huif.StallLW = '0;
+    if(huif.IDEX_dREN  &&  (huif.IDEX_rt==huif.IFID_rs  ||  huif.IDEX_rt==huif.IFID_rt)  )
+      huif.StallLW = 2'b01;      
+     /* // postpone 2 additional nop
+    else if(huif.EXMEM_dREN  &&  (huif.EXMEM_rd==huif.IFID_rs  ||  huif.EXMEM_rd==huif.IFID_rt)  )
+      huif.StallLW = 2'b01;
+    else if(huif.MEMWB_dREN  &&  (huif.MEMWB_rd==huif.IFID_rs  ||  huif.MEMWB_rd==huif.IFID_rt)  )
+      huif.StallLW = 2'b01;
+    */
+  end
+    
+    
 endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /*
+    else if(huif.IDEX_dWEN  &&  (huif.IDEX_rt==huif.IFID_rs  ||  huif.IDEX_rt==huif.IFID_rt))
+      huif.StallLW = 2'b01;
+    else if(huif.EXMEM_dWEN  &&  (huif.EXMEM_rd==huif.IFID_rs  ||  huif.EXMEM_rd==huif.IFID_rt)  )
+      huif.StallLW = 2'b01;    
+    else if(huif.MEMWB_dWEN  &&  (huif.MEMWB_rd==huif.IFID_rs  ||  huif.MEMWB_rd==huif.IFID_rt)  )
+      huif.StallLW = 2'b01;
+
+    huif.ForwardSW ='0;
+    */

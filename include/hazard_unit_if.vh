@@ -5,30 +5,46 @@
 `include "cpu_types_pkg.vh"
 
 interface hazard_unit_if;
+  // import types
   import cpu_types_pkg::*;
 
-  logic dhit, ihit;
-  logic cu_halt, cu_Jump, ID_JR, ID_dread, PCSrc;
-  regbits_t ID_rt, IF_rs, IF_rt;
-  logic EX_dread, EX_dwrite;
+  logic [1:0] ForwardA, ForwardB;
+  logic [1:0] ForwardSW;
+  logic [1:0] StallLW;
+  logic [5:0] IDEX_rd, IDEX_rs, IDEX_rt, 
+              EXMEM_rd, 
+              MEMWB_rd,
+              MEMWB_rd_Prev, //
+              EXMEM_rt;      //
+  logic       IDEX_RegWrite,
+              IDEX_dREN, EXMEM_dREN, MEMWB_dREN,
+              EXMEM_RegWrite,
+              MEMWB_RegWrite, 
+              MEMWB_RegWrite_Prev; //
+  logic       IFID_dWEN, IDEX_dWEN, EXMEM_dWEN, MEMWB_dWEN;
+  logic [REG_W-1:0] IFID_rt, IFID_rs;
+  logic [OP_W-1:0] IFID_opc;
 
-  logic IF_EN, ID_EN, EX_EN, MEM_EN;
-  logic IF_FLUSH, ID_FLUSH, EX_FLUSH, MEM_FLUSH;
-  logic PC_EN;
-  logic iREN;
-  logic pr_halt;
-
-  //alu port
-  modport hu(
-    input dhit, ihit, cu_halt, cu_Jump, ID_JR, ID_dread, PCSrc, ID_rt, IF_rs, IF_rt, EX_dread, EX_dwrite, 
-    output IF_EN, ID_EN, EX_EN, MEM_EN, IF_FLUSH, ID_FLUSH, EX_FLUSH, MEM_FLUSH, PC_EN, iREN, pr_halt
+/*
+  modport hu (
+    input   IDEX_rd, IDEX_rs, IDEX_rt, EXMEM_rd, MEMWB_rd, IDEX_RegWrite, IDEX_dREN, 
+            EXMEM_dREN, MEMWB_dREN, EXMEM_RegWrite, MEMWB_RegWrite, IDEX_dWEN, EXMEM_dWEN, MEMWB_dWEN,
+            IFID_rt, IFID_rs, IFID_opc,
+    output  ForwardA, ForwardB, ForwardSW, StallLW
+  );
+  // register file tb
+  modport tb (
+    input   ForwardA, ForwardB, ForwardSW, StallLW,
+    output  IDEX_rd, IDEX_rs, IDEX_rt, EXMEM_rd, MEMWB_rd, IDEX_RegWrite, IDEX_dREN, 
+            EXMEM_dREN, MEMWB_dREN, EXMEM_RegWrite, MEMWB_RegWrite, IDEX_dWEN, EXMEM_dWEN, MEMWB_dWEN,
+            IFID_rt, IFID_rs, IFID_opc
   );
 
-  //testbench port
-  modport tb(
-    input IF_EN, ID_EN, EX_EN, MEM_EN, IF_FLUSH, ID_FLUSH, EX_FLUSH, MEM_FLUSH, PC_EN, iREN, pr_halt, 
-    output dhit, ihit, cu_halt, cu_Jump, ID_JR, ID_dread, PCSrc, ID_rt, IF_rs, IF_rt, EX_dread, EX_dwrite
-  );
+*/  
+
+
+
+
+
 endinterface
-
-`endif
+`endif //REGISTER_FILE_IF_VH

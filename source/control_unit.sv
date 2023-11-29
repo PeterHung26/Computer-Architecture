@@ -2,265 +2,88 @@
 `include "cpu_types_pkg.vh"
 
 module control_unit(
-    input logic CLK,
-    input logic nRST,
     control_unit_if.cu cuif
 );
-
 import cpu_types_pkg::*;
-//logic haltt;
-always_comb begin : CONTROL
-    cuif.ExtOp = 1'b0;
-    cuif.ALUSrc = 1'b0;
-    cuif.MemtoReg = 1'b0;
-    cuif.BEQ = 1'b0;
-    cuif.BNE = 1'b0;
-    cuif.Jump = 1'b0;
-    cuif.JR = 1'b0;
-    cuif.RegDst = 2'b0;
-    cuif.RegWr = 1'b0;
-    cuif.ALUCtr = ALU_SLL;
-    cuif.JumpReg = 1'b0;
-    cuif.LUI = 1'b0;
-    //cuif.LDsel = 2'b0;
-    //cuif.SVsel = 2'b0;
-    //cuif.iread = 1'b1;
-    cuif.dread = 1'b0;
-    cuif.dwrite = 1'b0;
-    cuif.halt = 1'b0;
-    /*if(cuif.halt)
-        cuif.iread = 1'b0;
-    else
-        cuif.iread = 1'b1;*/
-    casez (cuif.opcode)
-    RTYPE: begin
-        casez (cuif.funct)
-        SLLV: begin
-            cuif.ALUCtr = ALU_SLL;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        SRLV: begin
-            cuif.ALUCtr = ALU_SRL;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        JR: begin
-            cuif.JR = 1'b1;
-        end
-        ADD: begin
-            cuif.ALUCtr = ALU_ADD;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        ADDU: begin
-            cuif.ALUCtr = ALU_ADD;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        SUB: begin
-            cuif.ALUCtr = ALU_SUB;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        SUBU: begin
-            cuif.ALUCtr = ALU_SUB;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        AND: begin
-            cuif.ALUCtr = ALU_AND;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        OR: begin
-            cuif.ALUCtr = ALU_OR;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        XOR: begin
-            cuif.ALUCtr = ALU_XOR;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        NOR: begin
-            cuif.ALUCtr = ALU_NOR;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        SLT: begin
-            cuif.ALUCtr = ALU_SLT;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        SLTU: begin
-            cuif.ALUCtr = ALU_SLTU;
-            cuif.RegWr = 1'b1;
-            cuif.RegDst = 1'b1;
-        end
-        endcase
-    end
-    J: begin
-        cuif.Jump = 1'b1;
-    end
-    JAL: begin
-        cuif.Jump = 1'b1;
-        cuif.JumpReg = 1'b1;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'd2;
-    end
-    BEQ: begin
-        cuif.ExtOp = 1'b1; // Sign extension
-        cuif.ALUSrc = 1'b0;
-        cuif.ALUCtr = ALU_SUB;
-        cuif.BEQ = 1'b1;
-    end
-    BNE: begin
-        cuif.ExtOp = 1'b1; // Sign extension
-        cuif.ALUSrc = 1'b0;
-        cuif.ALUCtr = ALU_SUB;
-        cuif.BNE = 1'b1;
-    end
-    ADDI: begin
-        cuif.ExtOp = 1'b1; // Sign extension
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr = ALU_ADD;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    ADDIU: begin
-        cuif.ExtOp = 1'b1; // Sign extension
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr = ALU_ADD;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    SLTI: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_SLT;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    SLTIU: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_SLTU;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    ANDI: begin
-        cuif.ExtOp = 1'b0; // Zero Extension
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_AND;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    ORI: begin
-        cuif.ExtOp = 1'b0; // Zero Extension
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_OR;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    XORI: begin
-        cuif.ExtOp = 1'b0; // Zero Extension
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_XOR;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    LUI: begin
-        cuif.ExtOp = 1'b0; // Zero Extension
-        cuif.ALUSrc = 1'b1;
-        cuif.LUI = 1'b1;
-        cuif.ALUCtr =  ALU_SLL;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0; // write to rt
-    end
-    LW: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.MemtoReg = 1'b1;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0;
-        cuif.dread = 1'b1;
-    end
-    /*LBU: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.MemtoReg = 1'b1;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0;
-        cuif.dread = 1'b1;
-        cuif.LDsel = 2'd1;
-    end
-    LHU: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.MemtoReg = 1'b1;
-        cuif.RegWr = 1'b1;
-        cuif.RegDst = 2'b0;
-        cuif.dread = 1'b1;
-        cuif.LDsel = 2'd2;
-    end
-    SB: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.dwrite = 1'b1;
-        cuif.SVsel = 2'd1;
-    end
-    SH: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.dwrite = 1'b1;
-        cuif.SVsel = 2'd2;
-        
-    end*/
-
-
-    SW: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr =  ALU_ADD;
-        cuif.dwrite = 1'b1;
-    end
-    HALT: begin
-        cuif.halt = 1'b1;
-    end 
 
     
-    LL: begin
-        cuif.ExtOp = 1'b1;
-        cuif.ALUSrc = 1'b1;
-		cuif.ALUCtr = ALU_ADD;
-		cuif.MemtoReg = 1;
-		cuif.dread = 1;
-	end
+    
+
+    always_comb begin
+        cuif.aluop      = ALU_ADD;
+        cuif.RegWrite   = '0;
+        cuif.ALUSrc     = '0;
+        cuif.PCSrc      = '0;
+        cuif.dWEN       = '0;
+        cuif.dREN       = '0;
+        cuif.Mem2Reg    = '0;
+        cuif.RegDst     = '0;
+        cuif.Jump       = '0;
+        cuif.Jump2Reg   = '0;
+        cuif.JAL        = '0;
+        cuif.signExt    = '0;
+        cuif.halt       = '0;
+        cuif.LUI2Reg    = '0;
+        cuif.BNE        = '0;
+        //cuif.rs         = '0;
+        //cuif.rt         = '0;
+        //cuif.rd         = '0;
+        //cuif.imm        = '0;
+        
+        if(cuif.inst[31:26] == RTYPE[5:0]) begin
+            cuif.RegDst = 1;
+            unique casez(cuif.inst[5:0])
+                SLLV:   begin cuif.RegWrite = 1; cuif.aluop = ALU_SLL; end
+                SRLV:   begin cuif.RegWrite = 1; cuif.aluop = ALU_SRL; end
+                JR:     begin cuif.Jump2Reg = 1; end
+                ADD:    begin cuif.RegWrite = 1; cuif.aluop = ALU_ADD; end
+                ADDU:   begin cuif.RegWrite = 1; cuif.aluop = ALU_ADD; end
+                SUB:    begin cuif.RegWrite = 1; cuif.aluop = ALU_SUB; end
+                SUBU:   begin cuif.RegWrite = 1; cuif.aluop = ALU_SUB; end
+                AND:    begin cuif.RegWrite = 1; cuif.aluop = ALU_AND; end
+                OR:     begin cuif.RegWrite = 1; cuif.aluop = ALU_OR; end
+                XOR:    begin cuif.RegWrite = 1; cuif.aluop = ALU_XOR; end
+                NOR:    begin cuif.RegWrite = 1; cuif.aluop = ALU_NOR; end
+                SLT:    begin cuif.RegWrite = 1; cuif.aluop = ALU_SLT; end
+                SLTU:   begin cuif.RegWrite = 1; cuif.aluop = ALU_SLTU; end
+                default: ;   
+            endcase end
+        
+        else if(cuif.inst[31:26] == J[5:0])    begin cuif.Jump = 1; end //?
+        else if(cuif.inst[31:26] == JAL[5:0])  begin cuif.Jump = 1; cuif.JAL = 1; cuif.RegWrite = 1; end //?
+        else begin
+            //cuif.rs     = cuif.inst[25:21];
+            //cuif.rt     = cuif.inst[20:16];
+            //cuif.imm    = cuif.inst[15:0];
+            unique casez(cuif.inst[31:26])
+                BEQ:    begin cuif.aluop = ALU_SUB; cuif.PCSrc = 1; end
+                BNE:    begin cuif.aluop = ALU_SUB; cuif.PCSrc = 1; cuif.BNE = 1; end
+                ADDI:   begin cuif.RegWrite = 1; cuif.aluop = ALU_ADD; cuif.ALUSrc = 1; cuif.signExt = 1; end
+                ADDIU:  begin cuif.RegWrite = 1; cuif.aluop = ALU_ADD; cuif.ALUSrc = 1; cuif.signExt = 1; end
+                SLTI:   begin cuif.RegWrite = 1; cuif.aluop = ALU_SLT; cuif.ALUSrc = 1; cuif.signExt = 1; end
+                SLTIU:  begin cuif.RegWrite = 1; cuif.aluop = ALU_SLTU; cuif.ALUSrc = 1; cuif.signExt = 1; end
+                ANDI:   begin cuif.RegWrite = 1; cuif.aluop = ALU_AND; cuif.ALUSrc = 1; end
+                ORI:    begin cuif.RegWrite = 1; cuif.aluop = ALU_OR;  cuif.ALUSrc = 1; end
+                XORI:   begin cuif.RegWrite = 1; cuif.aluop = ALU_XOR; cuif.ALUSrc = 1; end
+                LUI:    begin cuif.RegWrite = 1; cuif.LUI2Reg = 1;     cuif.ALUSrc = 1; end
+                LW:     begin cuif.RegWrite = 1; cuif.aluop = ALU_ADD; cuif.ALUSrc = 1;cuif.Mem2Reg = 1; cuif.signExt = 1; cuif.dREN = 1; end
+                SW:     begin cuif.dWEN = 1; cuif.aluop = ALU_ADD;     cuif.ALUSrc = 1; cuif.signExt = 1; end
+                //LBU:    begin  end
+                //LHU:    begin  end
+                //SB:     begin  end
+                //SH:     begin  end
+                //LL:     begin  end
+                //SC:     begin  end
+                HALT:   begin cuif.halt = 1; end
+                default: ;  
+            endcase end
+        
+        
+ 
+    end 
 
 
-   	SC: begin
-        cuif.ExtOp = 1'b1;		
-		cuif.ALUSrc = 1'b1;
-        cuif.ALUCtr = ALU_ADD;
-		cuif.dwrite = 1;
-		cuif.MemtoReg = 1;
-	end    
-    endcase
-end
 
-/*always_ff @( posedge CLK, negedge nRST ) begin : HALT_LATCH
-    if(!nRST) begin
-        cuif.halt <= '0;
-    end
-    else begin
-        cuif.halt <= haltt;
-    end
-end*/
+
 
 endmodule

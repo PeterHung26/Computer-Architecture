@@ -1,63 +1,39 @@
 `ifndef CONTROL_UNIT_IF_VH
 `define CONTROL_UNIT_IF_VH
 
-// types
 `include "cpu_types_pkg.vh"
 
+// The request_unit will detect when memory requests are completed in
+// the datapath and take actions to deassert the memory request.
+
 interface control_unit_if;
-    // import types
-    import cpu_types_pkg::*;
+  // import types
+  import cpu_types_pkg::*;
 
-    //control signal
-    logic ExtOp;
-    logic ALUSrc;
-    logic MemtoReg;
-    logic BEQ;
-    logic BNE;
-    logic Jump;
-    logic JR;
-    logic [1:0] RegDst;
-    logic RegWr;
-    aluop_t ALUCtr;
-    logic JumpReg;
-    logic LUI;
-    //logic [1:0] LDsel;
-    //logic [1:0] SVsel;
+  word_t inst;
+  aluop_t aluop;
+  logic halt;
+  logic RegWrite, Mem2Reg, ALUSrc, PCSrc, RegDst;
+  logic Jump2Reg, Jump, JAL, signExt, LUI2Reg, BNE;
+  logic dWEN, dREN;
 
-    //datas from portout to decide whether to branch
-    //word_t Equal;
-    //opcode, funct, and shamt
-    opcode_t opcode;
-    funct_t funct;
-    logic [SHAM_W-1:0]  shamt;
-    //Signal to request unit
-    //logic iread;
-    logic dread;
-    logic dwrite;
-    //halt and flushed
-    logic halt;
-    //logic flushed;
-    //Flag from ALU
-    //logic zero;
-    //logic negative;
-    //logic overflow;
+  //regbits_t rs, rt, rd;
+  //logic [IMM_W-1:0] imm;
+  //logic [ADDR_W-1:0] addr;
+  //logic [SHAM_W-1:0] shamt;
+  //logic     dmemWEN, dmemREN;
+  //logic     dHit, iHit;
 
-    modport cu(
-        input opcode, funct, shamt,
-        output ExtOp, ALUSrc, MemtoReg, BEQ, BNE, Jump, JR, RegDst, RegWr, ALUCtr, JumpReg, LUI,
-        // Control signal
-        dread, dwrite,
-        // Signal to request unit
-        halt
-    );
-
-    modport tb(
-        input ExtOp, ALUSrc, MemtoReg, BEQ, BNE, Jump, JR, RegDst, RegWr, ALUCtr, JumpReg, LUI,
-        // Control signal
-        dread, dwrite,
-        // Signal to request unit
-        halt,
-        output opcode, funct, shamt
-    );
+  // register file ports
+  modport cu (
+    input   inst, //dHIT,iHIT,  
+    output  dWEN, dREN, signExt, Jump, Jump2Reg, JAL, aluop, ALUSrc, PCSrc, halt, RegWrite, Mem2Reg, RegDst, LUI2Reg, BNE
+  );
+  // register file tb
+  modport tb (
+    input   dWEN, dREN, signExt, Jump, Jump2Reg, JAL, aluop, ALUSrc, PCSrc, halt, RegWrite, Mem2Reg, RegDst, LUI2Reg, BNE,
+    output  inst //dHIT,iHIT
+  );
 endinterface
+
 `endif
