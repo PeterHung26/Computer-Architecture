@@ -71,7 +71,7 @@ module datapath (
   logic [31:0] br_addr;
   
 
-  /*
+  
   always_comb begin: PC_COMB_ALWAYS_NOT_TAKEN
     pc4 = pc+4;
     pcn = pc+4;
@@ -128,7 +128,7 @@ module datapath (
       pc_state = 3'd7;
     end
   end
-  */
+  
   
 
   /*
@@ -193,7 +193,7 @@ module datapath (
   end
   */
 
-
+/*
   always_comb begin: PC_COMB_ALWAYS_TAKEN
     pc4 = pc+4;
     pcn = pc+4;
@@ -253,7 +253,7 @@ module datapath (
       pc_state = 3'd7;
     end
   end
-
+*/
   
 /*
   assign opc     = dpif.imemload[31:26];
