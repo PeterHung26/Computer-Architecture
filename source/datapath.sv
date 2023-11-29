@@ -424,6 +424,8 @@ module datapath (
   end 
 
 
+  assign dpif.datomic = (ppif.EX_instr[31:26] == LL) || (ppif.EX_instr[31:26] == SC);
+
 
 
 

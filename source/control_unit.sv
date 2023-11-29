@@ -68,12 +68,23 @@ import cpu_types_pkg::*;
                 LUI:    begin cuif.RegWrite = 1; cuif.LUI2Reg = 1;     cuif.ALUSrc = 1; end
                 LW:     begin cuif.RegWrite = 1; cuif.aluop = ALU_ADD; cuif.ALUSrc = 1;cuif.Mem2Reg = 1; cuif.signExt = 1; cuif.dREN = 1; end
                 SW:     begin cuif.dWEN = 1; cuif.aluop = ALU_ADD;     cuif.ALUSrc = 1; cuif.signExt = 1; end
-                //LBU:    begin  end
-                //LHU:    begin  end
-                //SB:     begin  end
-                //SH:     begin  end
-                //LL:     begin  end
-                //SC:     begin  end
+                LL:     begin
+                            cuif.signExt     = 1;
+                            cuif.ALUSrc      = 1;
+				            cuif.aluop       = ALU_ADD;
+				            cuif.Mem2Reg     = 1;
+				            cuif.dREN        = 1;
+                            cuif.RegWrite     = 1;
+
+    			end
+	    		SC:     begin
+                            cuif.signExt     = 1;
+				            cuif.ALUSrc      = 1;
+                            cuif.aluop       = ALU_ADD;
+				            cuif.Mem2Reg     = 1;
+				            cuif.dWEN        = 1;
+                            cuif.RegWrite     = 1;
+			end
                 HALT:   begin cuif.halt = 1; end
                 default: ;  
             endcase end
