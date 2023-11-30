@@ -18,7 +18,7 @@ module memory_control (
 );
   // type import
   import cpu_types_pkg::*;
-  typedef enum logic [3:0] {IDLE, SNOOP, BUSRD1, BUSRD2, WB1, WAIT_WB1, WB2, BUSRDX1, BUSRDX2, RAMRD1, RAMRD2, RAMWR1, WAIT_RAMWR1, RAMWR2, IFETCH} state_t;
+  typedef enum logic [3:0] {IDLE, SNOOP, BUSRD1, BUSRD2, WB1, WAIT_WB1, WB2, BUSRDX1, BUSRDX2, RAMRD1, WAIT_RAMRD1, RAMRD2, RAMWR1, WAIT_RAMWR1, RAMWR2, IFETCH} state_t;
   // number of cpus for cc
   parameter CPUS = 2;
   
@@ -40,11 +40,16 @@ module memory_control (
   logic[1:0] l_dWEN;
   word_t [1:0] l_dstore;
   word_t [1:0] l_daddr;
-  
+  ramstate_t l_ramstate;
+  word_t l_ramload;
+  logic[1:0] l_iREN;
+  word_t [1:0] l_iaddr;
   // logic[1:0] l_ccwrite;
   // logic[1:0] l_cctrans;
   //Signal in RAMRD2 and WB2 and RAMWR2 to tell memory controller stop latching
   logic mem_recv;
+  // Signal in WAIT_WB1 and WAIT_RAMRD1 and WAIT_RAMWR1 to tell memory controller stop latching ramstate and ramload
+  logic wait_clean;
 
   always_ff @( posedge CLK, negedge nRST ) begin
     if(!nRST) begin
@@ -57,6 +62,10 @@ module memory_control (
       l_dWEN <= '0;
       l_dstore <= '0;
       l_daddr <= '0;
+      l_ramload <= '0;
+      l_ramstate <= FREE;
+      l_iREN <= '0;
+      l_iaddr <= '0;
     end
     else begin
       state <= nxt_state;
@@ -69,12 +78,24 @@ module memory_control (
         l_dWEN <= '0;
         l_dstore <= '0;
         l_daddr <= '0;
+        l_iREN <= '0;
+        l_iaddr <= '0;
       end
       else begin
         l_dREN <= ccif.dREN;
         l_dWEN <= ccif.dWEN;
         l_dstore <= ccif.dstore;
         l_daddr <= ccif.daddr;
+        l_iREN <= ccif.iREN;
+        l_iaddr <= ccif.iaddr;
+      end
+      if(wait_clean) begin
+        l_ramload <= '0;
+        l_ramstate <= FREE;
+      end
+      else begin
+        l_ramload <= ccif.ramload;
+        l_ramstate <= ccif.ramstate;
       end
     end
   end
@@ -95,7 +116,7 @@ module memory_control (
           nxt_state = RAMWR1;
         else if(l_dREN[0] || l_dREN[1])
           nxt_state = SNOOP;
-        else if(ccif.iREN[0] || ccif.iREN[1])
+        else if(l_iREN[0] || l_iREN[1])
           nxt_state = IFETCH;
       end
       SNOOP: begin
@@ -125,7 +146,7 @@ module memory_control (
         end
       end
       WB1: begin
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           nxt_state = WAIT_WB1;
         else
           nxt_state = WB1;
@@ -134,19 +155,22 @@ module memory_control (
         nxt_state = WB2;
       end
       WB2: begin
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           nxt_state = IDLE;
         else
           nxt_state = WB2;
       end
       RAMRD1: begin
-        if(ccif.ramstate == ACCESS)
-          nxt_state = RAMRD2;
+        if(l_ramstate == ACCESS)
+          nxt_state = WAIT_RAMRD1;
         else
           nxt_state = RAMRD1;
       end
+      WAIT_RAMRD1: begin
+        nxt_state = RAMRD2;
+      end
       RAMRD2: begin
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           nxt_state = IDLE;
         else
           nxt_state = RAMRD2;
@@ -166,7 +190,7 @@ module memory_control (
         end
       end
       RAMWR1: begin
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           nxt_state = WAIT_RAMWR1;
         else
           nxt_state = RAMWR1;
@@ -175,13 +199,13 @@ module memory_control (
         nxt_state = RAMWR2;
       end
       RAMWR2: begin
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           nxt_state = IDLE;
         else
           nxt_state = RAMWR2;
       end
       IFETCH: begin
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           nxt_state = IDLE;
         else
           nxt_state = IFETCH;
@@ -214,6 +238,7 @@ module memory_control (
     ccif.ramREN = '0;
     nxt_grant = grant;
     mem_recv = 1'b0;
+    wait_clean = 1'b0;
     casez (state)
       IDLE: begin
         if(l_dWEN[0] || l_dWEN[1]) begin
@@ -242,8 +267,8 @@ module memory_control (
             nxt_snoopied = grant;
           end
         end
-        else if(ccif.iREN[0] || ccif.iREN[1]) begin
-          if(ccif.iREN[grant])
+        else if(l_iREN[0] || l_iREN[1]) begin
+          if(l_iREN[grant])
             nxt_snooper = grant;
           else
             nxt_snooper = !grant;
@@ -267,7 +292,7 @@ module memory_control (
         ccif.ramstore = l_dstore[snoopied];
         ccif.ramaddr = {l_daddr[snooper][31:3], 3'b000};
         ccif.ramWEN = 1'b1;
-        if(ccif.ramstate == ACCESS) begin
+        if(l_ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
           ccif.dwait[snoopied] = 1'b0; // Tell the snoopied data are ready
         end
@@ -275,6 +300,7 @@ module memory_control (
       WAIT_WB1: begin
         ccif.ccwait[snoopied] = 1'b1;
         ccif.ccsnoopaddr[snoopied] = {l_daddr[snooper][31:3], 3'b100};
+        wait_clean = 1'b1;
       end
       WB2: begin
         ccif.ccwait[snoopied] = 1'b1;
@@ -283,7 +309,7 @@ module memory_control (
         ccif.ramstore = l_dstore[snoopied];
         ccif.ramaddr = {l_daddr[snooper][31:3], 3'b100};
         ccif.ramWEN = 1'b1;
-        if(ccif.ramstate == ACCESS) begin
+        if(l_ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
           ccif.dwait[snoopied] = 1'b0; // Tell the snoopied data are ready
           if(snooper == grant)
@@ -291,28 +317,34 @@ module memory_control (
           else
             nxt_grant = grant;
           mem_recv = 1'b1;
+          wait_clean = 1'b1;
         end
       end
       RAMRD1: begin
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {l_daddr[snooper][31:3], 3'b000};
         ccif.ccsnoopaddr[snoopied] = l_daddr[snooper]; // Send address for other cahce to S -> I
-        ccif.dload[snooper] = ccif.ramload;
-        if(ccif.ramstate == ACCESS)
+        ccif.dload[snooper] = l_ramload;
+        if(l_ramstate == ACCESS)
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
+      end
+      WAIT_RAMRD1:begin
+        wait_clean = 1'b1;
+        ccif.ccsnoopaddr[snoopied] = l_daddr[snooper]; // Send address for other cahce to S -> I
       end
       RAMRD2: begin
         ccif.ramREN = 1'b1;
         ccif.ramaddr = {l_daddr[snooper][31:3], 3'b100};
         ccif.ccsnoopaddr[snoopied] = l_daddr[snooper]; // Send address for other cahce to S -> I
-        ccif.dload[snooper] = ccif.ramload;
-        if(ccif.ramstate == ACCESS) begin
+        ccif.dload[snooper] = l_ramload;
+        if(l_ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0; // Tell the snooper data are ready
           if(snooper == grant)
             nxt_grant = !grant;
           else
             nxt_grant = grant;
           mem_recv = 1'b1;
+          wait_clean = 1'b1;
         end 
       end
       BUSRDX1: begin
@@ -329,85 +361,42 @@ module memory_control (
         ccif.ramWEN = 1'b1;
         ccif.ramaddr = {l_daddr[snooper][31:3], 3'b000};
         ccif.ramstore = l_dstore[snooper];
-        if(ccif.ramstate == ACCESS)
+        if(l_ramstate == ACCESS)
           ccif.dwait[snooper] = 1'b0;
+      end
+      WAIT_WB1: begin
+        wait_clean = 1'b1;
       end
       RAMWR2: begin
         ccif.ramWEN = 1'b1;
         ccif.ramaddr = {ccif.daddr[snooper][31:3], 3'b100};
         ccif.ramstore = ccif.dstore[snooper];
-        if(ccif.ramstate == ACCESS) begin
+        if(l_ramstate == ACCESS) begin
           ccif.dwait[snooper] = 1'b0;
           if(snooper == grant)
             nxt_grant = !grant;
           else
             nxt_grant = grant;
           mem_recv = 1'b1;
+          wait_clean = 1'b1;
         end
       end
       IFETCH: begin
         ccif.ramREN = 1'b1;
-        ccif.ramaddr = {ccif.iaddr[snooper]};
-        ccif.iload[snooper] = ccif.ramload;
-        if(ccif.ramstate == ACCESS) begin
+        ccif.ramaddr = {l_iaddr[snooper]};
+        ccif.iload[snooper] = l_ramload;
+        if(l_ramstate == ACCESS) begin
           ccif.iwait[snooper] = 1'b0;
           if(snooper == grant)
             nxt_grant = !grant;
           else
             nxt_grant = grant;
+          wait_clean = 1'b1;
+          mem_recv = 1'b1;
         end
       end 
     endcase
   end
-  // always_comb begin : ENABLE_ADDRESS_AND_LOAD
-  //   ccif.ramWEN = 1'b0;
-  //   ccif.ramREN = 1'b0;
-  //   ccif.ramaddr = '0;
-  //   ccif.ramstore = 1'b0;
-  //   ccif.iload = '0;
-  //   ccif.dload = '0;
-  //   if(ccif.dWEN) begin //write data has first priority
-  //     ccif.ramWEN = 1'b1;
-  //     ccif.ramaddr = ccif.daddr;
-  //     ccif.ramstore = ccif.dstore;
-  //   end
-  //   else if(ccif.dREN) begin // read data has second priority
-  //     ccif.ramREN = 1'b1;
-  //     ccif.ramaddr = ccif.daddr;
-  //     ccif.dload = ccif.ramload;
-  //   end
-  //   else if(ccif.iREN) begin // read instruction has third priority
-  //     ccif.ramREN = 1'b1;
-  //     ccif.ramaddr = ccif.iaddr;
-  //     ccif.iload = ccif.ramload;
-  //   end
-  // end
-
-  // always_comb begin : IWAIT_AND_DWAIT
-  //   ccif.dwait = 1'b1;
-  //   ccif.iwait = 1'b1;
-  //   if(ccif.ramstate == FREE) begin
-  //     ccif.dwait = 1'b1;
-  //     ccif.iwait = 1'b1;
-  //   end
-  //   else if(ccif.ramstate == BUSY) begin
-  //     ccif.dwait = 1'b1;
-  //     ccif.iwait = 1'b1;
-  //   end
-  //   else if(ccif.ramstate == ACCESS) begin
-  //     if(ccif.dWEN || ccif.dREN) begin
-  //       ccif.dwait = 1'b0;
-  //       ccif.iwait = 1'b1;
-  //     end
-  //     else begin
-  //       ccif.dwait = 1'b1;
-  //       ccif.iwait = 1'b0;
-  //     end
-  //   end
-  //   else if(ccif.ramstate == ERROR)begin
-  //     ccif.dwait = 1'b1;
-  //     ccif.iwait = 1'b1;
-  //   end
-  // end
+  
   
 endmodule
