@@ -42,8 +42,8 @@ module memory_control (
   word_t [1:0] l_daddr;
   ramstate_t l_ramstate;
   word_t l_ramload;
-  logic[1:0] l_iREN;
-  word_t [1:0] l_iaddr;
+  // logic[1:0] l_iREN;
+  // word_t [1:0] l_iaddr;
   // logic[1:0] l_ccwrite;
   // logic[1:0] l_cctrans;
   //Signal in RAMRD2 and WB2 and RAMWR2 to tell memory controller stop latching
@@ -64,8 +64,8 @@ module memory_control (
       l_daddr <= '0;
       l_ramload <= '0;
       l_ramstate <= FREE;
-      l_iREN <= '0;
-      l_iaddr <= '0;
+      // l_iREN <= '0;
+      // l_iaddr <= '0;
     end
     else begin
       state <= nxt_state;
@@ -78,16 +78,16 @@ module memory_control (
         l_dWEN <= '0;
         l_dstore <= '0;
         l_daddr <= '0;
-        l_iREN <= '0;
-        l_iaddr <= '0;
+        // l_iREN <= '0;
+        // l_iaddr <= '0;
       end
       else begin
         l_dREN <= ccif.dREN;
         l_dWEN <= ccif.dWEN;
         l_dstore <= ccif.dstore;
         l_daddr <= ccif.daddr;
-        l_iREN <= ccif.iREN;
-        l_iaddr <= ccif.iaddr;
+        // l_iREN <= ccif.iREN;
+        // l_iaddr <= ccif.iaddr;
       end
       if(wait_clean) begin
         l_ramload <= '0;
@@ -116,7 +116,7 @@ module memory_control (
           nxt_state = RAMWR1;
         else if(l_dREN[0] || l_dREN[1])
           nxt_state = SNOOP;
-        else if(l_iREN[0] || l_iREN[1])
+        else if(ccif.iREN[0] || ccif.iREN[1])
           nxt_state = IFETCH;
       end
       SNOOP: begin
@@ -205,7 +205,7 @@ module memory_control (
           nxt_state = RAMWR2;
       end
       IFETCH: begin
-        if(l_ramstate == ACCESS)
+        if(ccif.ramstate == ACCESS)
           nxt_state = IDLE;
         else
           nxt_state = IFETCH;
@@ -267,8 +267,8 @@ module memory_control (
             nxt_snoopied = grant;
           end
         end
-        else if(l_iREN[0] || l_iREN[1]) begin
-          if(l_iREN[grant])
+        else if(ccif.iREN[0] || ccif.iREN[1]) begin
+          if(ccif.iREN[grant])
             nxt_snooper = grant;
           else
             nxt_snooper = !grant;
@@ -383,16 +383,16 @@ module memory_control (
       end
       IFETCH: begin
         ccif.ramREN = 1'b1;
-        ccif.ramaddr = {l_iaddr[snooper]};
-        ccif.iload[snooper] = l_ramload;
-        if(l_ramstate == ACCESS) begin
+        ccif.ramaddr = {ccif.iaddr[snooper]};
+        ccif.iload[snooper] = ccif.ramload;
+        if(ccif.ramstate == ACCESS) begin
           ccif.iwait[snooper] = 1'b0;
           if(snooper == grant)
             nxt_grant = !grant;
           else
             nxt_grant = grant;
           wait_clean = 1'b1;
-          mem_recv = 1'b1;
+          //mem_recv = 1'b1;
         end
       end 
     endcase

@@ -1,0 +1,31 @@
+processing file asmFiles/palgorithm.asm (1 of 1)
+processing file asmFiles/dual.mergesort.asm (1 of 1)
+processing file asmFiles/dual.llsc.asm (1 of 1)
+processing file asmFiles/test.coherence1.asm (1 of 2)
+processing file asmFiles/test.coherence2.asm (2 of 2)
+processing file asmFiles/example.asm (1 of 1)
+processing file asmFiles/dual.llsc.asm (1 of 1)
+processing file asmFiles/dual.mergesort.asm (1 of 1)
+processing file asmFiles/dual.llsc.asm (1 of 6)
+processing file asmFiles/dual.mergesort.asm (2 of 6)
+processing file asmFiles/example.asm (3 of 6)
+processing file asmFiles/palgorithm.asm (4 of 6)
+--- memsim.hex	2023-12-02 23:18:42.868288828 -0500
++++ memcpu.hex	2023-12-02 23:18:42.800286282 -0500
+@@ -146,9 +146,11 @@
+ :0400FE008FBF0000B0
+ :0400FF0027BD000415
+ :0401000003E0000810
+-:0401400000000500B6
+-:0401410054C4A145BC
++:040140000000050CAA
++:040141000A0E4FF45F
++:04014200299BE548C8
++:0401430054C4A145BA
+ :040FFC0000000100F0
+-:040FFD0000805645D5
++:040FFD00007F4AE245
+ :040FFE000000028C61
+ :00000001FF
+processing file asmFiles/test.coherence1.asm (5 of 6)
+processing file asmFiles/test.coherence2.asm (6 of 6)
